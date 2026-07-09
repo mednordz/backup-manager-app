@@ -14,7 +14,7 @@ APP_DIR="$PROJECT_DIR/dist/$APP_NAME.app"
 BUNDLE_ID="com.mednor.backupmanager"
 VERSION="${BM_VERSION:-0.1.0}"
 BUILD_NUMBER="${BM_BUILD_NUMBER:-1}"
-FEED_URL="https://github.com/mednor/backup-manager-app/releases/latest/download/appcast.xml"
+FEED_URL="https://github.com/mednordz/backup-manager-app/releases/latest/download/appcast.xml"
 SPARKLE_PUBLIC_KEY="FmMS3RHcMSVyDbbY7YbaNL3ypevcrVc1mWvHC5U2liE="
 
 echo "==> swift build -c release"

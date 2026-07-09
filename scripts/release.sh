@@ -23,9 +23,10 @@ cp "$PROJECT_DIR/dist/BackupManager-$VERSION.dmg" "$RELEASES_DIR/"
 echo "==> signing + generating appcast.xml"
 "$GENERATE_APPCAST" "$RELEASES_DIR"
 
-echo "==> creating git tag v$VERSION"
+echo "==> creating + pushing git tag v$VERSION"
 cd "$PROJECT_DIR"
 git tag -f "v$VERSION"
+git push -f origin "v$VERSION"
 
 echo "==> publishing GitHub release"
 if gh release view "v$VERSION" >/dev/null 2>&1; then
@@ -38,4 +39,4 @@ else
     --notes "Voir les commits pour le détail des changements."
 fi
 
-echo "==> done: https://github.com/mednor/backup-manager-app/releases/tag/v$VERSION"
+echo "==> done: https://github.com/mednordz/backup-manager-app/releases/tag/v$VERSION"

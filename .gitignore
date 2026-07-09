@@ -1,4 +1,5 @@
 .build/
 dist/
+releases/
 .swiftpm/
 *.dSYM
