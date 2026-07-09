@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>AMApplicationBuild</key>
-	<string>523</string>
+	<string>534</string>
 	<key>AMApplicationVersion</key>
 	<string>2.10</string>
 	<key>AMDocumentVersion</key>
@@ -55,7 +55,7 @@
 				<key>ActionBundlePath</key>
 				<string>/System/Library/Automator/Run Shell Script.action</string>
 				<key>ActionName</key>
-				<string>Run Shell Script</string>
+				<string>Exécuter un script Shell</string>
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
@@ -120,7 +120,7 @@ osascript -e 'display notification "Transfert terminé." with title "Backup Mana
 				<key>Class Name</key>
 				<string>RunShellScriptAction</string>
 				<key>InputUUID</key>
-				<string>070335E5-8D21-4C85-87E9-1283F6D0B5D4</string>
+				<string>76CC50CA-CD94-48E3-AFB4-FD90CA7439B8</string>
 				<key>Keywords</key>
 				<array>
 					<string>Shell</string>
@@ -130,9 +130,9 @@ osascript -e 'display notification "Transfert terminé." with title "Backup Mana
 					<string>Unix</string>
 				</array>
 				<key>OutputUUID</key>
-				<string>B193C8AC-23BF-4871-8C73-8EBEF34637E0</string>
+				<string>C989C7D7-40B6-4E7E-B5D5-27DFF52DC8DC</string>
 				<key>UUID</key>
-				<string>19D25830-9E8C-44B6-8F95-550866B532EC</string>
+				<string>2A0347A5-005E-434A-B0E2-B900E0C37C40</string>
 				<key>UnlocalizedApplications</key>
 				<array>
 					<string>Automator</string>
@@ -206,25 +206,43 @@ osascript -e 'display notification "Transfert terminé." with title "Backup Mana
 					</dict>
 				</dict>
 				<key>isViewVisible</key>
-				<true/>
+				<integer>1</integer>
 				<key>location</key>
 				<string>309.000000:253.000000</string>
 				<key>nibPath</key>
 				<string>/System/Library/Automator/Run Shell Script.action/Contents/Resources/Base.lproj/main.nib</string>
 			</dict>
 			<key>isViewVisible</key>
-			<true/>
+			<integer>1</integer>
 		</dict>
 	</array>
 	<key>connectors</key>
 	<dict/>
 	<key>workflowMetaData</key>
 	<dict>
+		<key>applicationBundleIDsByPath</key>
+		<dict/>
+		<key>applicationPaths</key>
+		<array/>
+		<key>inputTypeIdentifier</key>
+		<string>com.apple.Automator.fileSystemObject</string>
+		<key>outputTypeIdentifier</key>
+		<string>com.apple.Automator.nothing</string>
+		<key>presentationMode</key>
+		<integer>11</integer>
+		<key>processesInput</key>
+		<integer>0</integer>
+		<key>serviceApplicationBundleID</key>
+		<string>com.apple.finder</string>
+		<key>serviceApplicationPath</key>
+		<string>/System/Library/CoreServices/Finder.app</string>
 		<key>serviceInputTypeIdentifier</key>
-		<string>com.apple.Automator.fileSystemObject.pathList</string>
+		<string>com.apple.Automator.fileSystemObject</string>
 		<key>serviceOutputTypeIdentifier</key>
 		<string>com.apple.Automator.nothing</string>
-		<key>serviceProcessesInput</key>
+		<key>systemImageName</key>
+		<string>NSActionTemplate</string>
+		<key>useAutomaticInputType</key>
 		<integer>0</integer>
 		<key>workflowTypeIdentifier</key>
 		<string>com.apple.Automator.servicesMenu</string>
