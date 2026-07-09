@@ -1,0 +1,106 @@
+#!/bin/bash
+#===============================================================================
+# build-app.sh — compile BackupManagerApp (SPM) and assemble it into a
+# double-clickable, ad-hoc signed BackupManager.app bundle. No Xcode.app
+# required — only Command Line Tools (swiftc, iconutil, codesign).
+#===============================================================================
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC_ICON="$HOME/backup-manager/menubar-icon.svg"
+BUILD_DIR="$PROJECT_DIR/.build"
+APP_NAME="BackupManager"
+APP_DIR="$PROJECT_DIR/dist/$APP_NAME.app"
+BUNDLE_ID="com.mednor.backupmanager"
+VERSION="${BM_VERSION:-0.1.0}"
+BUILD_NUMBER="${BM_BUILD_NUMBER:-1}"
+FEED_URL="https://github.com/mednor/backup-manager-app/releases/latest/download/appcast.xml"
+SPARKLE_PUBLIC_KEY="FmMS3RHcMSVyDbbY7YbaNL3ypevcrVc1mWvHC5U2liE="
+
+echo "==> swift build -c release"
+cd "$PROJECT_DIR"
+swift build -c release
+
+BIN_PATH="$BUILD_DIR/release/BackupManagerApp"
+[ -x "$BIN_PATH" ] || { echo "build failed: $BIN_PATH not found" >&2; exit 1; }
+
+SPARKLE_FRAMEWORK="$BUILD_DIR/arm64-apple-macosx/release/Sparkle.framework"
+[ -d "$SPARKLE_FRAMEWORK" ] || SPARKLE_FRAMEWORK="$(find "$BUILD_DIR" -maxdepth 4 -iname "Sparkle.framework" -print -quit)"
+[ -d "$SPARKLE_FRAMEWORK" ] || { echo "build failed: Sparkle.framework not found" >&2; exit 1; }
+
+echo "==> assembling app bundle at $APP_DIR"
+rm -rf "$APP_DIR"
+mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources" "$APP_DIR/Contents/Frameworks"
+cp "$BIN_PATH" "$APP_DIR/Contents/MacOS/$APP_NAME"
+chmod +x "$APP_DIR/Contents/MacOS/$APP_NAME"
+
+echo "==> embedding Sparkle.framework"
+rm -rf "$APP_DIR/Contents/Frameworks/Sparkle.framework"
+cp -R "$SPARKLE_FRAMEWORK" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
+install_name_tool -change \
+  "@rpath/Sparkle.framework/Versions/B/Sparkle" \
+  "@executable_path/../Frameworks/Sparkle.framework/Versions/B/Sparkle" \
+  "$APP_DIR/Contents/MacOS/$APP_NAME" 2>/dev/null || true
+
+echo "==> generating icons from $SRC_ICON"
+ICONSET="$PROJECT_DIR/.build/AppIcon.iconset"
+rm -rf "$ICONSET"
+mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+  rsvg-convert -w "$size" -h "$size" "$SRC_ICON" -o "$ICONSET/icon_${size}x${size}.png"
+  double=$((size * 2))
+  rsvg-convert -w "$double" -h "$double" "$SRC_ICON" -o "$ICONSET/icon_${size}x${size}@2x.png"
+done
+iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
+
+# menubar status-item icon (template image: macOS recolors it per theme)
+rsvg-convert -w 18 -h 18 "$SRC_ICON" -o "$APP_DIR/Contents/Resources/StatusIcon.png"
+rsvg-convert -w 36 -h 36 "$SRC_ICON" -o "$APP_DIR/Contents/Resources/StatusIcon@2x.png"
+
+echo "==> writing Info.plist"
+cat > "$APP_DIR/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>Backup Manager</string>
+  <key>CFBundleDisplayName</key><string>Backup Manager</string>
+  <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
+  <key>CFBundleExecutable</key><string>$APP_NAME</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>$VERSION</string>
+  <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSHumanReadableCopyright</key><string>Backup Manager</string>
+  <key>SUFeedURL</key><string>$FEED_URL</string>
+  <key>SUPublicEDKey</key><string>$SPARKLE_PUBLIC_KEY</string>
+  <key>SUEnableAutomaticChecks</key><true/>
+  <key>SUScheduledCheckInterval</key><integer>86400</integer>
+</dict>
+</plist>
+PLIST
+
+echo "==> writing entitlements"
+# Sparkle.framework ships pre-signed under its own Team ID; hardened runtime's
+# Library Validation otherwise refuses to load a differently-signed embedded
+# framework from an ad-hoc-signed host app. This is Sparkle's own documented
+# fix — it disables only that one check, not the rest of hardened runtime.
+ENTITLEMENTS="$BUILD_DIR/entitlements.plist"
+cat > "$ENTITLEMENTS" <<ENTPLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.disable-library-validation</key><true/>
+</dict>
+</plist>
+ENTPLIST
+
+echo "==> codesign (ad-hoc, stable identifier: $BUNDLE_ID)"
+codesign --force --deep --sign - --identifier "$BUNDLE_ID" --options runtime \
+  --entitlements "$ENTITLEMENTS" "$APP_DIR"
+codesign --verify --deep --strict "$APP_DIR"
+
+echo "==> done: $APP_DIR"
