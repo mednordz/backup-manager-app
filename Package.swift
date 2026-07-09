@@ -14,6 +14,12 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/BackupManagerApp"
+        ),
+        // Petit lanceur signé du moteur : donne à bash+rsync une identité TCC
+        // unique et stable (voir Sources/bmengine/main.swift).
+        .executableTarget(
+            name: "bmengine",
+            path: "Sources/bmengine"
         )
     ]
 )
