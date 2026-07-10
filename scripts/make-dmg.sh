@@ -27,6 +27,13 @@ mkdir -p "$STAGING"
 cp -R "$APP_DIR" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 
+# Copie du guide d'aide à la racine du DMG (lisible avant même d'ouvrir
+# l'app — utile pour la section Gatekeeper du guide, sinon impossible à
+# consulter tant que l'app elle-même est bloquée). Repris depuis le bundle
+# déjà construit par build-app.sh, pas une seconde copie indépendante.
+cp "$APP_DIR/Contents/Resources/help.html" "$STAGING/Guide d'utilisation.html"
+cp -R "$APP_DIR/Contents/Resources/help-images" "$STAGING/help-images"
+
 echo "==> creating $DMG_OUT"
 hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING" -ov -format UDZO "$DMG_OUT" >/dev/null
 
