@@ -47,6 +47,9 @@ BM_VERSION="$VERSION" BM_BUILD_NUMBER="$BUILD_NUMBER" "$PROJECT_DIR/scripts/make
 echo "==> smoke-test du bundle avant publication"
 "$PROJECT_DIR/scripts/smoke-test.sh" "$PROJECT_DIR/dist/BackupManager.app"
 
+echo "==> couverture de l'Aide (informatif, ne bloque pas la release)"
+"$PROJECT_DIR/scripts/check-help-coverage.sh" || true
+
 cp "$PROJECT_DIR/dist/BackupManager-$VERSION.dmg" "$RELEASES_DIR/"
 
 echo "==> signing + generating appcast.xml (avec notes de version embarquées)"

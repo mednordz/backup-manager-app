@@ -26,6 +26,12 @@ scripts/release.sh <version>   # build + smoke-test + tag + GitHub Release + app
 
 Sans ce certificat, on peut toujours éditer/lire le code Swift depuis une nouvelle machine (ou même via Claude Code sur le web, sans Mac du tout) — juste pas builder/publier une release réelle.
 
+## Règle : tenir l'Aide (help.html) à jour
+
+`Sources/BackupManagerApp/Resources/help.html` est le guide embarqué (menu Aide → Guide d'utilisation). Erreur déjà commise deux fois : relire ce fichier de mémoire et le déclarer "complet" sans avoir vérifié contre le vrai code de l'UI — des fonctionnalités entières (destination SSH distante, alertes iMessage, historique des runs) sont restées non documentées alors qu'elles existaient déjà dans `backup-manager/static/index.html`.
+
+**Après toute modification d'interface** (nouveau bouton, champ, menu, comportement visible) — ici ou dans `backup-manager` — lancer `scripts/check-help-coverage.sh` et regarder si le nouvel élément apparaît dans le rapport. Ce n'est pas un gate automatique (le script tourne en informatif dans `release.sh`, il ne bloque jamais) : chaque libellé signalé ne mérite pas forcément une section, mais **ne jamais affirmer que l'Aide est complète sans avoir fait tourner ce script d'abord** — la relecture du guide seul ne suffit pas, c'est justement l'erreur qui s'est produite.
+
 ## Règle absolue : demander avant de publier
 
 **Ne jamais lancer `scripts/release.sh` (donc publier un tag + release GitHub visible publiquement) sans confirmation explicite de l'utilisateur pour CETTE publication précise.** Une confirmation passée ne vaut pas pour la suivante.
