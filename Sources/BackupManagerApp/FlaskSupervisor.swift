@@ -112,33 +112,59 @@ final class FlaskSupervisor {
         environmentVerified = true
     }
 
+    /// Fichiers/dossiers "gérés" par l'app — exactement ce que build-app.sh
+    /// embarque dans Resources/backup-manager-src (voir ce script pour la
+    /// même liste côté build). Tout le reste dans ~/backup-manager (jobs,
+    /// venv, logs — qui vivent en fait ailleurs, dans ~/.config/backup-manager
+    /// et ~/Library/Logs) n'est jamais touché par ce mécanisme.
+    private static let managedBackendItems = [
+        "app.py", "backup-engine.sh", "progress-parse.py", "verify-parse.py",
+        "requirements.txt", "static", "docs", "bin",
+    ]
+
     /// Sur un Mac où l'app n'a jamais tourné, ~/backup-manager (app.py,
     /// backup-engine.sh, static/, bin/bmengine…) n'existe pas encore — le DMG
     /// ne contient que le shell Swift compilé. Sans ça, `python app.py`
     /// échoue instantanément (fichier introuvable), boucle jusqu'à
     /// maxConsecutiveFailures, puis reste bloqué en .crashed sans que rien
-    /// n'ait jamais pu se lancer. On installe donc la copie embarquée
-    /// (Resources/backup-manager-src, voir build-app.sh) au premier lancement
-    /// — jamais si app.py existe déjà, pour ne toucher à rien sur une machine
-    /// déjà installée (dev ou utilisateur).
+    /// n'ait jamais pu se lancer : on installe donc la copie embarquée
+    /// (Resources/backup-manager-src) au tout premier lancement.
+    ///
+    /// Sur une machine DÉJÀ bootstrappée par une version antérieure, on
+    /// resynchronise aussi ces mêmes fichiers à CHAQUE lancement (écrasés par
+    /// la copie embarquée de la version actuelle) — sinon un Mac autre que
+    /// celui de dev reste figé pour toujours sur le backend du tout premier
+    /// install, et aucun correctif ultérieur (comme celui-ci) ne l'atteint
+    /// jamais, même après avoir réinstallé/mis à jour l'app elle-même
+    /// (constaté en usage réel : réinstaller le .app ne touche jamais
+    /// ~/backup-manager, qui vit en dehors du bundle).
+    ///
+    /// Seule exception : si ~/backup-manager est un dépôt git (présence de
+    /// .git — c'est le cas sur la machine de dev, jamais sur une install
+    /// utilisateur bootstrappée), on ne touche RIEN, jamais — ça reste la
+    /// copie de travail activement développée, pas un simple runtime.
     private func bootstrapBackendIfNeeded() {
         let fm = FileManager.default
-        guard !fm.fileExists(atPath: appDir.appendingPathComponent("app.py").path) else { return }
+        guard !fm.fileExists(atPath: appDir.appendingPathComponent(".git").path) else { return }
         guard let bundled = Bundle.main.url(forResource: "backup-manager-src", withExtension: nil) else {
-            NSLog("FlaskSupervisor: bundled backend source (backup-manager-src) not found in app bundle — cannot bootstrap ~/backup-manager")
+            NSLog("FlaskSupervisor: bundled backend source (backup-manager-src) not found in app bundle — cannot sync ~/backup-manager")
             return
         }
+        let firstInstall = !fm.fileExists(atPath: appDir.appendingPathComponent("app.py").path)
         do {
             try fm.createDirectory(at: appDir, withIntermediateDirectories: true)
-            for item in try fm.contentsOfDirectory(at: bundled, includingPropertiesForKeys: nil) {
-                let dest = appDir.appendingPathComponent(item.lastPathComponent)
-                if !fm.fileExists(atPath: dest.path) {
-                    try fm.copyItem(at: item, to: dest)
+            for name in Self.managedBackendItems {
+                let src = bundled.appendingPathComponent(name)
+                guard fm.fileExists(atPath: src.path) else { continue }
+                let dest = appDir.appendingPathComponent(name)
+                if fm.fileExists(atPath: dest.path) {
+                    try fm.removeItem(at: dest)
                 }
+                try fm.copyItem(at: src, to: dest)
             }
-            NSLog("FlaskSupervisor: bootstrapped ~/backup-manager from bundled resources")
+            NSLog("FlaskSupervisor: \(firstInstall ? "bootstrapped" : "synced") ~/backup-manager from bundled resources")
         } catch {
-            NSLog("FlaskSupervisor: bootstrap of ~/backup-manager failed: \(error)")
+            NSLog("FlaskSupervisor: \(firstInstall ? "bootstrap" : "sync") of ~/backup-manager failed: \(error)")
         }
     }
 
