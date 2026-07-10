@@ -14,7 +14,7 @@ scripts/build-app.sh     # -> dist/BackupManager.app
 scripts/make-dmg.sh      # -> dist/BackupManager-<version>.dmg
 ```
 
-`build-app.sh` embarque aussi le backend Flask complet (`~/backup-manager/{app.py,backup-engine.sh,progress-parse.py,verify-parse.py,requirements.txt,static,docs}` + `bmengine` fraîchement compilé et signé) dans `Contents/Resources/backup-manager-src/`. Sur un Mac où l'app n'a jamais tourné, `FlaskSupervisor.bootstrapBackendIfNeeded()` installe cette copie dans `~/backup-manager` au premier lancement — sans ça, `python app.py` échoue immédiatement (fichier introuvable) et l'app reste bloquée sur « Démarrage du serveur… » indéfiniment (bug réel constaté sur un second Mac, corrigé en v0.2.4).
+`build-app.sh` embarque aussi le backend Flask complet (`~/backup-manager/{app.py,backup-engine.sh,progress-parse.py,verify-parse.py,requirements.txt,static,docs}` + `bmengine` fraîchement compilé et signé + `rsync` autonome relocalisé — voir `scripts/vendor-rsync.sh`, aucune dépendance à Homebrew requise sur la machine cible) dans `Contents/Resources/backup-manager-src/`. Sur un Mac où l'app n'a jamais tourné, `FlaskSupervisor.bootstrapBackendIfNeeded()` installe cette copie dans `~/backup-manager` — et la resynchronise à CHAQUE lancement (sauf si `~/backup-manager` est un dépôt git, ex. la machine de dev) pour que les correctifs backend atteignent aussi les machines déjà installées, pas seulement les nouvelles.
 
 Requiert que le certificat auto-signé « Backup Manager Self-Signed » soit dans le trousseau login de la machine de build (voir `~/backup-manager/_signing/README.txt`) — `build-app.sh` échoue explicitement si absent plutôt que de produire un `bmengine` non signé.
 
