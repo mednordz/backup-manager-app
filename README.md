@@ -1,11 +1,15 @@
 # BackupManager (native shell)
 
-Coquille native macOS (Swift/AppKit) pour [backup-manager](https://github.com) :
+Coquille native macOS (Swift/AppKit) pour [backup-manager](https://github.com/mednordz/backup-manager) (privé) :
 icône de menu bar, fenêtre `WKWebView` hébergeant le panneau existant, supervision
 du process Flask, notifications natives, démarrage automatique, mise à jour
 automatique (Sparkle).
 
 Pas de Xcode.app requis — uniquement les Command Line Tools + Swift Package Manager.
+
+**Reprendre ce projet depuis une nouvelle machine ?** Lire `CLAUDE.md` (ce dépôt), puis le
+[`RESUME.md`](https://github.com/mednordz/backup-manager/blob/master/RESUME.md) du dépôt
+`backup-manager` — il contient le prompt exact à donner à Claude Code.
 
 ## Build
 
