@@ -41,9 +41,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private func setupMainMenu() {
         let mainMenu = NSMenu()
 
+        // Menu applicatif toujours visible en haut à gauche quand l'app est au
+        // premier plan — contrairement à l'icône de la barre de menu, qui peut
+        // être poussée hors champ si la barre système est chargée (beaucoup
+        // d'icônes d'autres apps).
         let appMenu = NSMenu()
         let appMenuItem = NSMenuItem()
         appMenuItem.submenu = appMenu
+        let openItem = NSMenuItem(title: "Ouvrir le panneau", action: #selector(openPanel), keyEquivalent: "")
+        openItem.target = self
+        appMenu.addItem(openItem)
+        let updateItem = NSMenuItem(title: "Rechercher les mises à jour…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        appMenu.addItem(updateItem)
+        appMenu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "Quitter Backup Manager", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         appMenu.addItem(quitItem)
