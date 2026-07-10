@@ -99,6 +99,10 @@ echo "==> bundling help.html + help-images (menu Aide)"
 cp "$PROJECT_DIR/Sources/BackupManagerApp/Resources/help.html" "$APP_DIR/Contents/Resources/help.html"
 cp -R "$PROJECT_DIR/Sources/BackupManagerApp/Resources/help-images" "$APP_DIR/Contents/Resources/help-images"
 
+echo "==> bundling uninstall.sh (menu Aide -> Désinstaller complètement…)"
+cp "$PROJECT_DIR/Sources/BackupManagerApp/Resources/uninstall.sh" "$APP_DIR/Contents/Resources/uninstall.sh"
+chmod +x "$APP_DIR/Contents/Resources/uninstall.sh"
+
 echo "==> generating icons from $SRC_ICON"
 ICONSET="$PROJECT_DIR/.build/AppIcon.iconset"
 rm -rf "$ICONSET"

@@ -88,6 +88,7 @@
   <a href="#planification">11. Planification &amp; vérification</a>
   <a href="#imessage">12. Alertes iPhone (iMessage)</a>
   <a href="#problemes">13. En cas de problème</a>
+  <a href="#desinstaller">14. Désinstaller complètement</a>
 </nav>
 
 <h2 id="principe">1. Principe général</h2>
@@ -213,6 +214,13 @@
 <div class="card">
   <strong>Un backup reporté n'est presque jamais une urgence.</strong> Le principe de conception de l'app : mieux vaut refuser d'agir et attendre votre intervention que risquer d'effacer des données par erreur. Le message affiché explique toujours la vraie cause (disque absent, système de fichiers non inscriptible, permissions…) plutôt qu'un diagnostic générique.
 </div>
+
+<h2 id="desinstaller">14. Désinstaller complètement</h2>
+<p>Menu <strong>Aide → Désinstaller complètement…</strong> : après confirmation, l'app se ferme et une fenêtre Terminal s'ouvre pour effectuer la désinstallation — visible étape par étape, avec une dernière confirmation à taper avant que quoi que ce soit ne soit supprimé.</p>
+<p>Sont supprimés : l'app elle-même, ses tâches planifiées, ses préférences, ses journaux et son cache. <strong>Vos configurations de job sont automatiquement sauvegardées sur le Bureau</strong> avant d'être effacées.</p>
+<div class="tip"><strong>Vos fichiers déjà sauvegardés (miroirs et corbeilles sur vos disques de destination) ne sont jamais touchés</strong> — la désinstallation ne supprime que la configuration de l'app sur ce Mac, jamais les données sur vos disques.</div>
+<p>Si l'app ne se lance plus du tout, le même script est aussi disponible en dehors de l'app : <strong>« Désinstaller BackupManager.command »</strong> à la racine du DMG d'installation (à retélécharger si besoin).</p>
+<div class="warn">Deux choses que macOS ne permet pas de faire par script, à retirer manuellement si besoin après coup : l'entrée dans Réglages Système → Général → Éléments de connexion (si « Ouvrir au démarrage » était activé), et les autorisations Accès complet au disque / Automatisation dans Réglages Système → Confidentialité et sécurité.</div>
 
 <footer>Backup Manager — sauvegarde locale, sans cloud. Ce guide est embarqué dans l'app, disponible hors ligne.</footer>
 </div>

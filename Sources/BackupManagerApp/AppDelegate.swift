@@ -119,6 +119,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         let issueItem = NSMenuItem(title: "Signaler un problème…", action: #selector(openIssueTracker), keyEquivalent: "")
         issueItem.target = self
         helpMenu.addItem(issueItem)
+        helpMenu.addItem(NSMenuItem.separator())
+        let uninstallItem = NSMenuItem(title: "Désinstaller complètement…", action: #selector(uninstallCompletely), keyEquivalent: "")
+        uninstallItem.target = self
+        helpMenu.addItem(uninstallItem)
         mainMenu.addItem(helpMenuItem)
         NSApp.helpMenu = helpMenu
 
@@ -145,6 +149,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     @objc private func openIssueTracker() {
         guard let url = URL(string: "https://github.com/mednordz/backup-manager-app/issues/new") else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    /// Copie uninstall.sh vers un .command temporaire puis l'ouvre (= Terminal
+    /// l'exécute), avant de quitter l'app — le script attend lui-même que le
+    /// process ait bien disparu avant de toucher aux fichiers. Même script que
+    /// celui embarqué à la racine du DMG (voir make-dmg.sh) : un seul chemin de
+    /// code testé, deux points d'entrée.
+    @objc private func uninstallCompletely() {
+        let alert = NSAlert()
+        alert.messageText = "Désinstaller complètement Backup Manager ?"
+        alert.informativeText = "Ceci arrête tous les backups planifiés et supprime l'app, sa configuration, ses journaux, son cache et ses préférences de ce Mac. Vos configurations de job seront sauvegardées sur le Bureau avant suppression.\n\nVos fichiers déjà sauvegardés sur vos disques de destination (miroirs et corbeilles) ne sont jamais touchés.\n\nCette action est irréversible."
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Annuler")
+        alert.addButton(withTitle: "Continuer…")
+        guard alert.runModal() == .alertSecondButtonReturn else { return }
+
+        guard let scriptURL = Bundle.main.url(forResource: "uninstall", withExtension: "sh") else {
+            NSLog("uninstallCompletely: uninstall.sh introuvable dans le bundle")
+            return
+        }
+        let dest = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Désinstaller BackupManager.command")
+        do {
+            try? FileManager.default.removeItem(at: dest)
+            try FileManager.default.copyItem(at: scriptURL, to: dest)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dest.path)
+        } catch {
+            NSLog("uninstallCompletely: échec de préparation du script: \(error)")
+            let failAlert = NSAlert()
+            failAlert.messageText = "Impossible de préparer la désinstallation"
+            failAlert.informativeText = error.localizedDescription
+            failAlert.runModal()
+            return
+        }
+        NSWorkspace.shared.open(dest)
+        NSApp.terminate(nil)
     }
 
     @objc private func reloadPanel() {

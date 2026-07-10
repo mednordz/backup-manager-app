@@ -34,6 +34,12 @@ ln -s /Applications "$STAGING/Applications"
 cp "$APP_DIR/Contents/Resources/help.html" "$STAGING/Guide d'utilisation.html"
 cp -R "$APP_DIR/Contents/Resources/help-images" "$STAGING/help-images"
 
+# Désinstalleur autonome à la racine du DMG : utile si l'app elle-même ne
+# se lance plus (le menu Aide → Désinstaller complètement… est alors
+# inaccessible) — même script dans les deux cas, testé une seule fois.
+cp "$APP_DIR/Contents/Resources/uninstall.sh" "$STAGING/Désinstaller BackupManager.command"
+chmod +x "$STAGING/Désinstaller BackupManager.command"
+
 echo "==> creating $DMG_OUT"
 hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING" -ov -format UDZO "$DMG_OUT" >/dev/null
 
