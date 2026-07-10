@@ -17,7 +17,7 @@ let package = Package(
             // help.html n'est pas une ressource SPM classique : build-app.sh le
             // copie lui-même dans Contents/Resources/ (même logique que l'icône
             // ou Sparkle.framework, assemblés à la main pour ce bundle .app).
-            exclude: ["Resources/help.html"]
+            exclude: ["Resources/help.html", "Resources/help-images"]
         ),
         // Petit lanceur signé du moteur : donne à bash+rsync une identité TCC
         // unique et stable (voir Sources/bmengine/main.swift).

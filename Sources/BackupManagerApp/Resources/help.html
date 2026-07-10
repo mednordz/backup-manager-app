@@ -53,6 +53,19 @@
   .toc { columns: 2; column-gap: 24px; font-size: 13.5px; margin: 0 0 32px; }
   .toc a { text-decoration: none; display: block; padding: 3px 0; }
   footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+  .steps { margin: 0 0 24px; padding-left: 0; list-style: none; counter-reset: step; }
+  .steps > li { counter-increment: step; margin: 0 0 28px; padding-left: 40px; position: relative; }
+  .steps > li::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .steps figure { margin: 10px 0 0; }
+  .steps img {
+    max-width: 100%; width: 340px; display: block; border-radius: 8px;
+    border: 1px solid var(--line); box-shadow: 0 2px 10px rgba(0,0,0,.15);
+  }
+  .steps figcaption { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -70,7 +83,8 @@
   <a href="#rapide">6. Transfert rapide</a>
   <a href="#corbeille">7. Corbeille &amp; restauration</a>
   <a href="#planification">8. Planification &amp; vérification</a>
-  <a href="#problemes">9. En cas de problème</a>
+  <a href="#gatekeeper">9. « App non identifiée » au premier lancement</a>
+  <a href="#problemes">10. En cas de problème</a>
 </nav>
 
 <h2 id="principe">1. Principe général</h2>
@@ -121,7 +135,41 @@
 <h2 id="planification">8. Planification &amp; vérification automatique</h2>
 <p>Chaque job peut être <strong>planifié</strong> (heure fixe quotidienne) et/ou déclenché <strong>au branchement</strong> du disque de destination. Une <strong>vérification d'intégrité automatique</strong> (checksums complets) peut aussi tourner à intervalle régulier pour détecter une corruption silencieuse — ces réglages sont sur la carte de chaque job.</p>
 
-<h2 id="problemes">9. En cas de problème</h2>
+<h2 id="gatekeeper">9. « App non identifiée » au premier lancement</h2>
+<p>Backup Manager n'est pas distribué sur l'App Store — au tout premier lancement, macOS affiche un avertissement de sécurité (Gatekeeper) car l'app vient d'être téléchargée. C'est normal et attendu, pas un signe de problème. Voici la marche à suivre, étape par étape :</p>
+<ol class="steps">
+  <li>
+    Double-cliquez sur <strong>Backup Manager.app</strong>. macOS affiche « Élément « BackupManager.app » non ouvert » et propose seulement « Placer dans la corbeille » ou « Terminé ». <strong>Cliquez sur « Terminé »</strong> — ne mettez rien à la corbeille.
+    <figure>
+      <img src="help-images/gatekeeper-1-alerte.png" alt="Alerte macOS : Élément « BackupManager.app » non ouvert, avec les boutons Placer dans la corbeille et Terminé">
+      <figcaption>Premier avertissement — cliquez « Terminé ».</figcaption>
+    </figure>
+  </li>
+  <li>
+    Ouvrez <strong> Réglages Système → Confidentialité et sécurité</strong> (ou via le menu <strong>Aide → Autoriser l'accès complet au disque…</strong> de Backup Manager, qui ouvre le même panneau). Faites défiler jusqu'à la section <strong>Sécurité</strong> : une ligne mentionne que « BackupManager.app » a été bloquée, avec un bouton <strong>« Ouvrir quand même »</strong>.
+    <figure>
+      <img src="help-images/gatekeeper-2-reglages.png" alt="Réglages Système, section Sécurité, avec le message « BackupManager.app a été bloqué pour protéger votre Mac » et le bouton Ouvrir quand même">
+      <figcaption>Cliquez « Ouvrir quand même » dans Réglages Système.</figcaption>
+    </figure>
+  </li>
+  <li>
+    Une confirmation apparaît : <strong>« Ouvrir « BackupManager.app » ? »</strong>. Cliquez à nouveau sur <strong>« Ouvrir quand même »</strong>.
+    <figure>
+      <img src="help-images/gatekeeper-3-confirmation.png" alt="Dialogue de confirmation « Ouvrir BackupManager.app ? » avec les boutons Placer dans la corbeille, Ouvrir quand même, Terminé">
+      <figcaption>Confirmation — « Ouvrir quand même ».</figcaption>
+    </figure>
+  </li>
+  <li>
+    macOS demande enfin le <strong>nom d'utilisateur et mot de passe</strong> d'un compte administrateur (ou Touch ID) pour autoriser l'ouverture. Une fois validé, l'app s'ouvre normalement — et s'ouvrira directement, sans plus aucun avertissement, à chaque lancement suivant.
+    <figure>
+      <img src="help-images/gatekeeper-4-motdepasse.png" alt="Dialogue demandant le nom d'utilisateur et le mot de passe administrateur pour autoriser l'ouverture">
+      <figcaption>Dernière étape — authentification administrateur.</figcaption>
+    </figure>
+  </li>
+</ol>
+<div class="tip">Cette procédure n'est nécessaire qu'une seule fois par installation. Elle réapparaît uniquement si l'app est remplacée par une nouvelle copie téléchargée manuellement (les mises à jour automatiques via le menu <strong>Backup Manager → Rechercher les mises à jour…</strong> ne redéclenchent pas cet avertissement).</div>
+
+<h2 id="problemes">10. En cas de problème</h2>
 <ul>
   <li><strong>Voir log</strong> (sur chaque job) : journal détaillé du dernier run.</li>
   <li>Menu <strong>Aide → Voir les journaux…</strong> : ouvre le dossier complet des logs dans le Finder.</li>
