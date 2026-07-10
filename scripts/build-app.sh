@@ -95,6 +95,9 @@ install_name_tool -change \
   "@executable_path/../Frameworks/Sparkle.framework/Versions/B/Sparkle" \
   "$APP_DIR/Contents/MacOS/$APP_NAME" 2>/dev/null || true
 
+echo "==> bundling help.html (menu Aide)"
+cp "$PROJECT_DIR/Sources/BackupManagerApp/Resources/help.html" "$APP_DIR/Contents/Resources/help.html"
+
 echo "==> generating icons from $SRC_ICON"
 ICONSET="$PROJECT_DIR/.build/AppIcon.iconset"
 rm -rf "$ICONSET"

@@ -96,7 +96,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         mainMenu.addItem(windowMenuItem)
         NSApp.windowsMenu = windowMenu
 
+        // Menu Aide : contenu réellement utile (pas qu'un lien vide) --
+        // guide d'utilisation embarqué (fonctionne hors ligne), accès direct
+        // au réglage système le plus souvent nécessaire (Accès complet au
+        // disque), et un raccourci vers les logs pour le dépannage.
+        // NSApp.helpMenu active en prime le champ de recherche standard
+        // macOS dans ce menu (recherche jusque dans les menus de l'app).
+        let helpMenu = NSMenu(title: "Aide")
+        let helpMenuItem = NSMenuItem()
+        helpMenuItem.submenu = helpMenu
+        let guideItem = NSMenuItem(title: "Guide d'utilisation Backup Manager", action: #selector(openHelpGuide), keyEquivalent: "?")
+        guideItem.target = self
+        helpMenu.addItem(guideItem)
+        helpMenu.addItem(NSMenuItem.separator())
+        let fullDiskItem = NSMenuItem(title: "Autoriser l'accès complet au disque…", action: #selector(openFullDiskSettings), keyEquivalent: "")
+        fullDiskItem.target = self
+        helpMenu.addItem(fullDiskItem)
+        let logsItem = NSMenuItem(title: "Voir les journaux…", action: #selector(openLogsFolder), keyEquivalent: "")
+        logsItem.target = self
+        helpMenu.addItem(logsItem)
+        helpMenu.addItem(NSMenuItem.separator())
+        let issueItem = NSMenuItem(title: "Signaler un problème…", action: #selector(openIssueTracker), keyEquivalent: "")
+        issueItem.target = self
+        helpMenu.addItem(issueItem)
+        mainMenu.addItem(helpMenuItem)
+        NSApp.helpMenu = helpMenu
+
         NSApp.mainMenu = mainMenu
+    }
+
+    // MARK: - Menu Aide
+
+    @objc private func openHelpGuide() {
+        guard let url = Bundle.main.url(forResource: "help", withExtension: "html") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    @objc private func openFullDiskSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    @objc private func openLogsFolder() {
+        let logs = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs")
+        NSWorkspace.shared.open(logs)
+    }
+
+    @objc private func openIssueTracker() {
+        guard let url = URL(string: "https://github.com/mednordz/backup-manager-app/issues/new") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     @objc private func reloadPanel() {

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide d'utilisation — Backup Manager</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f4f5f7; --card: #ffffff; --ink: #1c1e21; --muted: #6b7280;
+    --line: #e2e4e8; --accent: #0a7cff; --green: #22c55e; --red: #ef4444; --amber: #b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1216; --card: #1a1d23; --ink: #eef0f2; --muted: #9aa1ab; --line: #2a2e35; --accent: #4da3ff; --amber: #f2b84b; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 80px; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  .subtitle { color: var(--muted); margin: 0 0 32px; font-size: 15px; }
+  h2 { font-size: 18px; margin: 40px 0 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+  h2:first-of-type { border-top: none; padding-top: 0; }
+  h3 { font-size: 15px; margin: 20px 0 8px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code {
+    font: 13px ui-monospace, "SF Mono", Menlo, monospace; background: var(--line);
+    padding: 1px 6px; border-radius: 4px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; margin: 14px 0;
+  }
+  .badge {
+    display: inline-block; font-size: 12.5px; font-weight: 600; padding: 2px 8px;
+    border-radius: 10px; background: var(--line); color: var(--ink); margin: 0 4px 4px 0;
+  }
+  .badge.green { background: rgba(34,197,94,.15); color: var(--green); }
+  .badge.amber { background: rgba(180,83,9,.15); color: var(--amber); }
+  .badge.red   { background: rgba(239,68,68,.15); color: var(--red); }
+  .tip {
+    border-left: 3px solid var(--accent); padding: 10px 14px; margin: 14px 0;
+    background: rgba(10,124,255,.06); border-radius: 0 6px 6px 0;
+  }
+  .warn {
+    border-left: 3px solid var(--amber); padding: 10px 14px; margin: 14px 0;
+    background: rgba(180,83,9,.08); border-radius: 0 6px 6px 0;
+  }
+  a { color: var(--accent); }
+  .toc { columns: 2; column-gap: 24px; font-size: 13.5px; margin: 0 0 32px; }
+  .toc a { text-decoration: none; display: block; padding: 3px 0; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Backup Manager — Guide d'utilisation</h1>
+<p class="subtitle">Sauvegarde locale (rsync) avec miroir exact et corbeille datée — pas de cloud, tout reste chez vous.</p>
+
+<nav class="toc">
+  <a href="#principe">1. Principe général</a>
+  <a href="#premier-job">2. Créer un premier backup</a>
+  <a href="#interface">3. Lire l'interface</a>
+  <a href="#permissions">4. Autoriser l'accès disque</a>
+  <a href="#disques">5. Disques externes (exFAT/NTFS/EXT)</a>
+  <a href="#rapide">6. Transfert rapide</a>
+  <a href="#corbeille">7. Corbeille &amp; restauration</a>
+  <a href="#planification">8. Planification &amp; vérification</a>
+  <a href="#problemes">9. En cas de problème</a>
+</nav>
+
+<h2 id="principe">1. Principe général</h2>
+<p>Un <strong>job</strong> associe un dossier <strong>source</strong> à un disque de <strong>destination</strong>. Chaque backup crée/actualise un <strong>miroir</strong> — une copie exacte de la source — sur la destination.</p>
+<p>Rien n'est jamais supprimé silencieusement : tout fichier disparu ou modifié dans la source est déplacé dans une <strong>corbeille datée</strong> sur la destination, pas effacé. Vous pouvez toujours revenir en arrière.</p>
+<div class="tip">Le moteur de sauvegarde tourne indépendamment de cette fenêtre : si vous fermez l'app ou redémarrez le Mac, un backup planifié se lance quand même via <code>launchd</code>.</div>
+
+<h2 id="premier-job">2. Créer un premier backup</h2>
+<ol>
+  <li>Cliquez sur le bouton <strong>+</strong> en haut à droite du panneau.</li>
+  <li>Choisissez le dossier <strong>source</strong> à sauvegarder et le disque de <strong>destination</strong>.</li>
+  <li>Donnez un nom au job, ajustez les exclusions si besoin (par défaut : fichiers système macOS comme <code>.DS_Store</code>).</li>
+  <li>Cliquez <strong>Lancer</strong> pour un premier backup immédiat, ou <strong>Simuler</strong> pour voir ce qui serait fait sans rien écrire.</li>
+</ol>
+<div class="warn">Avant de lancer un gros backup, l'app affiche automatiquement <strong>« À transférer : X → assez de place ✅/⚠️ »</strong> à côté de l'espace disque disponible — vérifiez ce verdict avant de lancer.</div>
+
+<h2 id="interface">3. Lire l'interface</h2>
+<h3>Statut du dernier run</h3>
+<p>
+  <span class="badge green">dernière : OK</span>
+  <span class="badge red">dernière : échec</span>
+  <span class="badge amber">dernière : reportée</span>
+  <span class="badge amber">dernière : interrompue</span>
+</p>
+<p>Une sauvegarde <strong>reportée</strong> (badge ambre) n'est pas une erreur qui a corrompu quoi que ce soit — c'est le contraire : un garde-fou a refusé d'agir par précaution (disque non branché, source qui semble vide, etc.) plutôt que de risquer d'effacer des données. Le miroir existant reste toujours intact dans ce cas.</p>
+<h3>Comparaison source ↔ miroir</h3>
+<p>Chaque job compare automatiquement sa source et son miroir dès que vous ouvrez le panneau — <strong>aucun clic requis</strong>. <span class="badge green">✅ Source et miroir identiques</span> confirme que tout est à jour ; sinon le nombre d'éléments à ajouter/mettre à jour/supprimer est détaillé.</p>
+
+<h2 id="permissions">4. Autoriser l'accès disque (obligatoire)</h2>
+<p>macOS exige l'autorisation <strong>Accès complet au disque</strong> pour qu'un backup puisse lire vos dossiers personnels et écrire sur un disque externe. Sans elle, les backups échouent silencieusement.</p>
+<p>Menu <strong>Aide → Autoriser l'accès complet au disque…</strong> ouvre directement le bon réglage. Il suffit d'activer l'interrupteur pour <strong>Backup Manager</strong> dans la liste.</p>
+
+<h2 id="disques">5. Disques externes (exFAT / NTFS / EXT)</h2>
+<ul>
+  <li><strong>exFAT / APFS / HFS+</strong> : fonctionne nativement, aucune configuration.</li>
+  <li><strong>NTFS</strong> (disques formatés pour Windows) : macOS ne sait pas y <em>écrire</em> nativement. Un pilote tiers (ex. <em>Microsoft NTFS for Mac by Paragon</em>) est nécessaire — l'app le détecte automatiquement une fois installé, sans rien reconfigurer.</li>
+  <li><strong>EXT2/3/4</strong> (disques Linux) : nécessite aussi un pilote tiers (ex. <em>Paragon ExtFS</em>). Même détection automatique.</li>
+</ul>
+<p>Si un backup est reporté avec un message mentionnant le système de fichiers, l'app affiche un lien direct vers le bon pilote à installer.</p>
+
+<h2 id="rapide">6. Transfert rapide ⚡</h2>
+<p>Pour copier ou déplacer un fichier/dossier ponctuellement, sans créer de job permanent : bouton <strong>⚡ Transferts rapides</strong> en haut du panneau. Une vérification par checksums confirme l'intégrité après coup ; en mode <em>déplacement</em>, la source n'est supprimée qu'après cette confirmation.</p>
+
+<h2 id="corbeille">7. Corbeille &amp; restauration</h2>
+<p>Bouton <strong>Corbeille</strong> sur chaque job : parcourez les versions supprimées par date, et restaurez un fichier précis directement vers son emplacement d'origine dans la source.</p>
+<p>La rétention (nombre de jours de conservation) se règle par job via <strong>Éditer</strong>.</p>
+
+<h2 id="planification">8. Planification &amp; vérification automatique</h2>
+<p>Chaque job peut être <strong>planifié</strong> (heure fixe quotidienne) et/ou déclenché <strong>au branchement</strong> du disque de destination. Une <strong>vérification d'intégrité automatique</strong> (checksums complets) peut aussi tourner à intervalle régulier pour détecter une corruption silencieuse — ces réglages sont sur la carte de chaque job.</p>
+
+<h2 id="problemes">9. En cas de problème</h2>
+<ul>
+  <li><strong>Voir log</strong> (sur chaque job) : journal détaillé du dernier run.</li>
+  <li>Menu <strong>Aide → Voir les journaux…</strong> : ouvre le dossier complet des logs dans le Finder.</li>
+  <li>Menu <strong>Aide → Signaler un problème…</strong> : ouvre la page pour rapporter un bug avec le contexte utile.</li>
+</ul>
+<div class="card">
+  <strong>Un backup reporté n'est presque jamais une urgence.</strong> Le principe de conception de l'app : mieux vaut refuser d'agir et attendre votre intervention que risquer d'effacer des données par erreur. Le message affiché explique toujours la vraie cause (disque absent, système de fichiers non inscriptible, permissions…) plutôt qu'un diagnostic générique.
+</div>
+
+<footer>Backup Manager — sauvegarde locale, sans cloud. Ce guide est embarqué dans l'app, disponible hors ligne.</footer>
+</div>
+</body>
+</html>

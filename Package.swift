@@ -13,7 +13,11 @@ let package = Package(
             dependencies: [
                 .product(name: "Sparkle", package: "Sparkle")
             ],
-            path: "Sources/BackupManagerApp"
+            path: "Sources/BackupManagerApp",
+            // help.html n'est pas une ressource SPM classique : build-app.sh le
+            // copie lui-même dans Contents/Resources/ (même logique que l'icône
+            // ou Sparkle.framework, assemblés à la main pour ce bundle .app).
+            exclude: ["Resources/help.html"]
         ),
         // Petit lanceur signé du moteur : donne à bash+rsync une identité TCC
         // unique et stable (voir Sources/bmengine/main.swift).
