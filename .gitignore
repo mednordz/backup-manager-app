@@ -3,3 +3,4 @@ dist/
 releases/
 .swiftpm/
 *.dSYM
+.DS_Store
