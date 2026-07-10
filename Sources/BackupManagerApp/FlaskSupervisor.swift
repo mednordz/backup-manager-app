@@ -80,8 +80,18 @@ final class FlaskSupervisor {
                 self.delegate?.flaskStatusChanged(.running)
                 self.beginHealthMonitor(generation: gen)
             } else {
-                self.ensureEnvironment()
-                self.attemptLaunch(generation: gen)
+                // ensureEnvironment() shells out synchronously (venv creation,
+                // pip install) — on a first-ever launch this can take real
+                // seconds over the network, and running it on the main thread
+                // would beachball the whole app for that whole window.
+                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    guard let self else { return }
+                    self.ensureEnvironment()
+                    DispatchQueue.main.async {
+                        guard gen == self.generation else { return }
+                        self.attemptLaunch(generation: gen)
+                    }
+                }
             }
         }
     }
@@ -90,6 +100,7 @@ final class FlaskSupervisor {
 
     private func ensureEnvironment() {
         guard !environmentVerified else { return }
+        bootstrapBackendIfNeeded()
         let fm = FileManager.default
         if !fm.isExecutableFile(atPath: pythonPath.path) {
             runSync("/usr/bin/python3", ["-m", "venv", venvDir.path])
@@ -99,6 +110,36 @@ final class FlaskSupervisor {
             runSync(pythonPath.path, ["-m", "pip", "install", "-q", "flask"])
         }
         environmentVerified = true
+    }
+
+    /// Sur un Mac où l'app n'a jamais tourné, ~/backup-manager (app.py,
+    /// backup-engine.sh, static/, bin/bmengine…) n'existe pas encore — le DMG
+    /// ne contient que le shell Swift compilé. Sans ça, `python app.py`
+    /// échoue instantanément (fichier introuvable), boucle jusqu'à
+    /// maxConsecutiveFailures, puis reste bloqué en .crashed sans que rien
+    /// n'ait jamais pu se lancer. On installe donc la copie embarquée
+    /// (Resources/backup-manager-src, voir build-app.sh) au premier lancement
+    /// — jamais si app.py existe déjà, pour ne toucher à rien sur une machine
+    /// déjà installée (dev ou utilisateur).
+    private func bootstrapBackendIfNeeded() {
+        let fm = FileManager.default
+        guard !fm.fileExists(atPath: appDir.appendingPathComponent("app.py").path) else { return }
+        guard let bundled = Bundle.main.url(forResource: "backup-manager-src", withExtension: nil) else {
+            NSLog("FlaskSupervisor: bundled backend source (backup-manager-src) not found in app bundle — cannot bootstrap ~/backup-manager")
+            return
+        }
+        do {
+            try fm.createDirectory(at: appDir, withIntermediateDirectories: true)
+            for item in try fm.contentsOfDirectory(at: bundled, includingPropertiesForKeys: nil) {
+                let dest = appDir.appendingPathComponent(item.lastPathComponent)
+                if !fm.fileExists(atPath: dest.path) {
+                    try fm.copyItem(at: item, to: dest)
+                }
+            }
+            NSLog("FlaskSupervisor: bootstrapped ~/backup-manager from bundled resources")
+        } catch {
+            NSLog("FlaskSupervisor: bootstrap of ~/backup-manager failed: \(error)")
+        }
     }
 
     @discardableResult

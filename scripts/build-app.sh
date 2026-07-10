@@ -7,7 +7,8 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC_ICON="$HOME/backup-manager/menubar-icon.svg"
+BACKUP_MANAGER_DIR="$HOME/backup-manager"
+SRC_ICON="$BACKUP_MANAGER_DIR/menubar-icon.svg"
 BUILD_DIR="$PROJECT_DIR/.build"
 APP_NAME="BackupManager"
 APP_DIR="$PROJECT_DIR/dist/$APP_NAME.app"
@@ -16,6 +17,7 @@ VERSION="${BM_VERSION:-0.1.0}"
 BUILD_NUMBER="${BM_BUILD_NUMBER:-1}"
 FEED_URL="https://github.com/mednordz/backup-manager-app/releases/latest/download/appcast.xml"
 SPARKLE_PUBLIC_KEY="FmMS3RHcMSVyDbbY7YbaNL3ypevcrVc1mWvHC5U2liE="
+BMENGINE_SIGN_IDENTITY="Backup Manager Self-Signed"
 
 echo "==> swift build -c release"
 cd "$PROJECT_DIR"
@@ -23,6 +25,13 @@ swift build -c release
 
 BIN_PATH="$BUILD_DIR/release/BackupManagerApp"
 [ -x "$BIN_PATH" ] || { echo "build failed: $BIN_PATH not found" >&2; exit 1; }
+
+BMENGINE_BIN="$BUILD_DIR/release/bmengine"
+[ -x "$BMENGINE_BIN" ] || { echo "build failed: $BMENGINE_BIN not found" >&2; exit 1; }
+security find-identity -p codesigning 2>/dev/null | grep -q "$BMENGINE_SIGN_IDENTITY" || {
+  echo "build failed: signing identity '$BMENGINE_SIGN_IDENTITY' not in keychain — see $BACKUP_MANAGER_DIR/_signing/README.txt" >&2
+  exit 1
+}
 
 SPARKLE_FRAMEWORK="$BUILD_DIR/arm64-apple-macosx/release/Sparkle.framework"
 [ -d "$SPARKLE_FRAMEWORK" ] || SPARKLE_FRAMEWORK="$(find "$BUILD_DIR" -maxdepth 4 -iname "Sparkle.framework" -print -quit)"
@@ -33,6 +42,28 @@ rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources" "$APP_DIR/Contents/Frameworks"
 cp "$BIN_PATH" "$APP_DIR/Contents/MacOS/$APP_NAME"
 chmod +x "$APP_DIR/Contents/MacOS/$APP_NAME"
+
+# ------------------------------------------------------------------------------
+# Backend Flask embarqué (Resources/backup-manager-src) : sur un Mac où l'app
+# n'a jamais tourné, ~/backup-manager n'existe pas — FlaskSupervisor le
+# bootstrape depuis cette copie au premier lancement (voir
+# FlaskSupervisor.bootstrapBackendIfNeeded). Liste blanche EXPLICITE, jamais
+# un `cp -R` du dossier source entier : celui-ci contient aussi _signing/
+# (clé privée de signature bmengine) et .venv/, qui ne doivent JAMAIS finir
+# dans un DMG distribué publiquement.
+# ------------------------------------------------------------------------------
+echo "==> bundling Flask backend (Resources/backup-manager-src)"
+BACKEND_DEST="$APP_DIR/Contents/Resources/backup-manager-src"
+mkdir -p "$BACKEND_DEST/bin"
+for item in app.py backup-engine.sh progress-parse.py verify-parse.py requirements.txt static docs; do
+  cp -R "$BACKUP_MANAGER_DIR/$item" "$BACKEND_DEST/$item"
+done
+find "$BACKEND_DEST" -name ".DS_Store" -delete
+
+echo "==> building + signing bmengine (identity: $BMENGINE_SIGN_IDENTITY)"
+cp "$BMENGINE_BIN" "$BACKEND_DEST/bin/bmengine"
+codesign --force --sign "$BMENGINE_SIGN_IDENTITY" \
+  --identifier "com.mednor.backupmanager.engine" "$BACKEND_DEST/bin/bmengine"
 
 echo "==> embedding Sparkle.framework"
 rm -rf "$APP_DIR/Contents/Frameworks/Sparkle.framework"

@@ -203,6 +203,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     <p>Démarrage du serveur…</p></body></html>
     """
 
+    /// Affiché quand FlaskSupervisor abandonne (.crashed) après plusieurs
+    /// tentatives — avant ce fix, l'écran "Démarrage du serveur…" restait
+    /// affiché indéfiniment sans aucune indication qu'il fallait agir.
+    private static let crashedHTML = """
+    <html><body style="background:#1e1e1e;color:#ccc;font-family:-apple-system;\
+    display:flex;flex-direction:column;align-items:center;justify-content:center;\
+    height:100vh;margin:0;text-align:center;padding:0 40px">
+    <p style="font-size:15px;margin-bottom:10px">⚠️ Le serveur local n'a pas pu démarrer.</p>
+    <p style="font-size:13px;color:#888;max-width:420px">Vérifie ta connexion internet (la première \
+    installation télécharge des dépendances Python), puis choisis « Relancer le serveur » dans le \
+    menu de l'icône dans la barre de menu.</p>
+    </body></html>
+    """
+
     // MARK: - WKUIDelegate (window.confirm()/alert() de app.js -> NSAlert native)
 
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
@@ -266,6 +280,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             NSApp.terminate(nil)
         case .crashed:
             restartMenuItem?.isHidden = false
+            webView?.loadHTMLString(Self.crashedHTML, baseURL: nil)
         }
     }
 
