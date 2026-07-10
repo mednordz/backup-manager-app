@@ -119,7 +119,7 @@ final class FlaskSupervisor {
     /// et ~/Library/Logs) n'est jamais touché par ce mécanisme.
     private static let managedBackendItems = [
         "app.py", "backup-engine.sh", "progress-parse.py", "verify-parse.py",
-        "requirements.txt", "static", "docs", "bin",
+        "requirements.txt", "static", "docs", "bin", "lib", "THIRD-PARTY-NOTICES",
     ]
 
     /// Sur un Mac où l'app n'a jamais tourné, ~/backup-manager (app.py,

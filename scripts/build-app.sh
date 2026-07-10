@@ -65,6 +65,28 @@ cp "$BMENGINE_BIN" "$BACKEND_DEST/bin/bmengine"
 codesign --force --sign "$BMENGINE_SIGN_IDENTITY" \
   --identifier "com.mednor.backupmanager.engine" "$BACKEND_DEST/bin/bmengine"
 
+# rsync moderne embarqué : Apple ne fournit qu'un openrsync ancien (pas de
+# --backup-dir, pas de -A/-X), donc l'app a TOUJOURS nécessité un rsync
+# Homebrew installé à part — sans automatisation aucune jusqu'ici (constaté en
+# usage réel : un Mac sans Homebrew reste bloqué sur "rsync introuvable", sans
+# rien pour corriger ça). vendor-rsync.sh relocalise le rsync Homebrew de la
+# machine de build (+ ses dylibs) en un paquet autonome, sans référence à
+# /opt/homebrew — il tourne donc sur n'importe quel Mac, avec ou sans Homebrew.
+echo "==> vendoring rsync (self-contained, no Homebrew required on target)"
+"$PROJECT_DIR/scripts/vendor-rsync.sh" "$BUILD_DIR/rsync-vendor"
+cp "$BUILD_DIR/rsync-vendor/bin/rsync" "$BACKEND_DEST/bin/rsync"
+mkdir -p "$BACKEND_DEST/lib"
+cp "$BUILD_DIR/rsync-vendor/lib/"*.dylib "$BACKEND_DEST/lib/"
+mkdir -p "$BACKEND_DEST/THIRD-PARTY-NOTICES"
+cat > "$BACKEND_DEST/THIRD-PARTY-NOTICES/rsync.txt" <<'NOTICE'
+rsync est distribué sous licence GPLv3 (Copyright Andrew Tridgell, Wayne
+Davison et contributeurs). Binaire fourni tel quel, non modifié, compilé par
+le projet Homebrew (formule "rsync"). Code source :
+  https://github.com/RsyncProject/rsync
+  https://formulae.brew.sh/formula/rsync (recette de compilation)
+Texte complet de la licence : https://www.gnu.org/licenses/gpl-3.0.txt
+NOTICE
+
 echo "==> embedding Sparkle.framework"
 rm -rf "$APP_DIR/Contents/Frameworks/Sparkle.framework"
 cp -R "$SPARKLE_FRAMEWORK" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
