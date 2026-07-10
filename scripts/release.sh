@@ -44,6 +44,9 @@ fi
 echo "==> building BackupManager-$VERSION.dmg (build $BUILD_NUMBER)"
 BM_VERSION="$VERSION" BM_BUILD_NUMBER="$BUILD_NUMBER" "$PROJECT_DIR/scripts/make-dmg.sh"
 
+echo "==> smoke-test du bundle avant publication"
+"$PROJECT_DIR/scripts/smoke-test.sh" "$PROJECT_DIR/dist/BackupManager.app"
+
 cp "$PROJECT_DIR/dist/BackupManager-$VERSION.dmg" "$RELEASES_DIR/"
 
 echo "==> signing + generating appcast.xml (avec notes de version embarquées)"
