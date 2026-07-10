@@ -49,6 +49,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         let appMenu = NSMenu()
         let appMenuItem = NSMenuItem()
         appMenuItem.submenu = appMenu
+        // Panneau standard macOS (nom, version, icône) -- fourni tout seul par AppKit,
+        // aucune UI custom à maintenir. Convention Mac : toujours en premier dans le
+        // menu applicatif, suivi d'un séparateur.
+        let aboutItem = NSMenuItem(title: "À propos de Backup Manager", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        aboutItem.target = NSApp
+        appMenu.addItem(aboutItem)
+        appMenu.addItem(NSMenuItem.separator())
         let openItem = NSMenuItem(title: "Ouvrir le panneau", action: #selector(openPanel), keyEquivalent: "")
         openItem.target = self
         appMenu.addItem(openItem)
