@@ -22,7 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         showPanel()
         NotificationsManager.shared.appDelegate = self
         NotificationsManager.shared.configure()
-        _ = AppUpdater.shared
+        AppUpdater.shared.appDelegate = self
+        AppUpdater.shared.checkSilently()
         supervisor.delegate = self
         supervisor.start()
     }
@@ -229,7 +230,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         guard message.name == "supervisor", let body = message.body as? String else { return }
         if body == "quit" {
             supervisor.markIntentionalQuit()
+        } else if body == "install-update" {
+            AppUpdater.shared.installPendingUpdate()
         }
+    }
+
+    /// Pousse la disponibilité d'une mise à jour à la page web (bannière
+    /// jaune) — voir static/app.js pour window.onUpdateAvailable.
+    func notifyUpdateAvailable(version: String) {
+        guard let data = try? JSONSerialization.data(withJSONObject: [version]),
+              let arrayLiteral = String(data: data, encoding: .utf8) else { return }
+        let versionLiteral = arrayLiteral.dropFirst().dropLast()  // "[\"1.2.3\"]" -> "\"1.2.3\""
+        webView?.evaluateJavaScript("window.onUpdateAvailable && window.onUpdateAvailable(\(versionLiteral))")
     }
 
     // MARK: - FlaskSupervisorDelegate
@@ -260,6 +272,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     func flaskJobsUpdated(_ jobs: [[String: Any]]) {
         jobPoller.process(jobs: jobs)
         updateDockBadge(jobs: jobs)
+        updateStatusIcon(jobs: jobs)
+    }
+
+    /// Fait vivre l'icône de la barre de menu : gabarit noir/blanc par
+    /// défaut (idle), bleue pendant une sauvegarde, rouge dès qu'un job a
+    /// échoué ou est bloqué par un montage/permission — plus besoin
+    /// d'ouvrir le panneau pour repérer un problème.
+    private func updateStatusIcon(jobs: [[String: Any]]) {
+        guard let button = statusItem?.button, let base = NSImage(named: "StatusIcon") else { return }
+        base.isTemplate = true
+        let activity = MenuBarStatus.activity(fromJobs: jobs)
+        button.image = MenuBarStatus.icon(for: activity, base: base)
+        button.toolTip = MenuBarStatus.tooltip(for: activity)
     }
 
     /// Reflects the same job-poll snapshot already used for notifications:
