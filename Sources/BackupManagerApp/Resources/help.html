@@ -79,13 +79,15 @@
   <a href="#gatekeeper">2. « App non identifiée » au premier lancement</a>
   <a href="#menubar">3. L'icône dans la barre des menus</a>
   <a href="#premier-job">4. Créer un premier backup</a>
-  <a href="#interface">5. Lire l'interface</a>
-  <a href="#permissions">6. Autoriser l'accès disque</a>
-  <a href="#disques">7. Disques externes (exFAT/NTFS/EXT)</a>
-  <a href="#rapide">8. Transfert rapide</a>
-  <a href="#corbeille">9. Corbeille &amp; restauration</a>
-  <a href="#planification">10. Planification &amp; vérification</a>
-  <a href="#problemes">11. En cas de problème</a>
+  <a href="#ssh">5. Destination distante (SSH)</a>
+  <a href="#interface">6. Lire l'interface</a>
+  <a href="#permissions">7. Autoriser l'accès disque</a>
+  <a href="#disques">8. Disques externes (exFAT/NTFS/EXT)</a>
+  <a href="#rapide">9. Transfert rapide</a>
+  <a href="#corbeille">10. Corbeille &amp; restauration</a>
+  <a href="#planification">11. Planification &amp; vérification</a>
+  <a href="#imessage">12. Alertes iPhone (iMessage)</a>
+  <a href="#problemes">13. En cas de problème</a>
 </nav>
 
 <h2 id="principe">1. Principe général</h2>
@@ -104,7 +106,7 @@
     </figure>
   </li>
   <li>
-    Ouvrez <strong>Réglages Système → Confidentialité et sécurité</strong> et faites défiler jusqu'à la section <strong>Sécurité</strong>, tout en bas de l'écran général : une ligne mentionne que « BackupManager.app » a été bloquée, avec un bouton <strong>« Ouvrir quand même »</strong>. <em>(Cet écran est différent de l'Accès complet au disque décrit à la section <a href="#permissions">6</a> — pas besoin d'y toucher ici.)</em>
+    Ouvrez <strong>Réglages Système → Confidentialité et sécurité</strong> et faites défiler jusqu'à la section <strong>Sécurité</strong>, tout en bas de l'écran général : une ligne mentionne que « BackupManager.app » a été bloquée, avec un bouton <strong>« Ouvrir quand même »</strong>. <em>(Cet écran est différent de l'Accès complet au disque décrit à la section <a href="#permissions">7</a> — pas besoin d'y toucher ici.)</em>
     <figure>
       <img src="help-images/gatekeeper-2-reglages.png" alt="Réglages Système, section Sécurité, avec le message « BackupManager.app a été bloqué pour protéger votre Mac » et le bouton Ouvrir quand même">
       <figcaption>Cliquez « Ouvrir quand même » dans Réglages Système.</figcaption>
@@ -131,7 +133,7 @@
 <p>Une fois l'app ouverte, une icône Backup Manager apparaît dans la <strong>barre des menus</strong> (en haut de l'écran, à côté de l'heure) — c'est le point d'accès principal au quotidien, même quand le panneau est fermé. Cliquez dessus pour ouvrir un menu :</p>
 <ul>
   <li><strong>Ouvrir le panneau</strong> : affiche la fenêtre principale.</li>
-  <li><strong>Relancer le serveur</strong> : redémarre le moteur de sauvegarde en arrière-plan sans quitter l'app — le premier réflexe si quelque chose semble bloqué (voir <a href="#problemes">section 11</a>).</li>
+  <li><strong>Relancer le serveur</strong> : redémarre le moteur de sauvegarde en arrière-plan sans quitter l'app — le premier réflexe si quelque chose semble bloqué (voir <a href="#problemes">section 13</a>).</li>
   <li><strong>Tester la notification</strong> : envoie une notification macOS de test, pour vérifier qu'elles sont bien autorisées pour Backup Manager.</li>
   <li><strong>Rechercher les mises à jour…</strong> : vérifie manuellement si une nouvelle version est disponible. L'app vérifie aussi automatiquement en arrière-plan (une fois par jour) et propose l'installation sans repasser par l'avertissement Gatekeeper de la <a href="#gatekeeper">section 2</a>.</li>
   <li><strong>Ouvrir au démarrage</strong> : active ou désactive le lancement automatique de Backup Manager à la connexion à votre compte.</li>
@@ -147,7 +149,18 @@
 </ol>
 <div class="warn">Avant de lancer un gros backup, l'app affiche automatiquement <strong>« À transférer : X → assez de place ✅/⚠️ »</strong> à côté de l'espace disque disponible — vérifiez ce verdict avant de lancer.</div>
 
-<h2 id="interface">5. Lire l'interface</h2>
+<h2 id="ssh">5. Destination distante (SSH)</h2>
+<p>La destination n'est pas obligatoirement un disque local : cochez <strong>Destination distante (SSH)</strong> dans le formulaire du job pour sauvegarder vers un NAS, un autre Mac ou un serveur Linux accessible en SSH. Champs à renseigner :</p>
+<ul>
+  <li><strong>Hôte</strong> : nom réseau ou IP (ex. <code>mon-nas.local</code> ou <code>192.168.1.10</code>).</li>
+  <li><strong>Port</strong> : 22 par défaut.</li>
+  <li><strong>Utilisateur SSH</strong> et <strong>chemin distant</strong> : dossier de destination sur la machine distante (ex. <code>/data/backups</code>).</li>
+  <li><strong>Chemin rsync distant</strong> (optionnel) : à préciser seulement si <code>rsync</code> n'est pas dans le <code>PATH</code> standard de la machine distante.</li>
+</ul>
+<div class="warn">Authentification par <strong>clé SSH uniquement</strong> (pas de mot de passe) : la clé publique de ce Mac doit déjà être ajoutée à <code>~/.ssh/authorized_keys</code> sur la machine distante, et la clé privée chargée dans l'agent SSH local, <strong>avant</strong> de lancer le premier backup.</div>
+<div class="tip">La comparaison source/miroir (section <a href="#interface">6</a>) fonctionne à l'identique sur une destination distante : même nombre d'éléments, même taille en octets — aucune tolérance d'écart, que la destination soit un disque local ou un serveur SSH.</div>
+
+<h2 id="interface">6. Lire l'interface</h2>
 <h3>Statut du dernier run</h3>
 <p>
   <span class="badge green">dernière : OK</span>
@@ -158,12 +171,16 @@
 <p>Une sauvegarde <strong>reportée</strong> (badge ambre) n'est pas une erreur qui a corrompu quoi que ce soit — c'est le contraire : un garde-fou a refusé d'agir par précaution (disque non branché, source qui semble vide, etc.) plutôt que de risquer d'effacer des données. Le miroir existant reste toujours intact dans ce cas.</p>
 <h3>Comparaison source ↔ miroir</h3>
 <p>Chaque job compare automatiquement sa source et son miroir dès que vous ouvrez le panneau — <strong>aucun clic requis</strong>. <span class="badge green">✅ Source et miroir identiques</span> confirme que tout est à jour ; sinon le nombre d'éléments à ajouter/mettre à jour/supprimer est détaillé.</p>
+<h3>Pendant l'exécution d'un backup</h3>
+<p>Une fenêtre de progression s'affiche : pourcentage, vitesse, temps restant estimé, et la phase en cours. Le bouton <strong>Arrêter</strong> interrompt le backup à tout moment sans risque — rsync écrit chaque fichier dans un temporaire puis le bascule seulement une fois complet, donc rien n'est jamais laissé à moitié écrit dans le miroir. Le badge affiche alors <span class="badge amber">dernière : interrompue</span>, pas un échec.</p>
+<h3>Historique des runs</h3>
+<p>Bouton <strong>Historique</strong> en haut du panneau : liste tous les runs passés, tous jobs confondus, avec filtres par job et par plage de dates.</p>
 
-<h2 id="permissions">6. Autoriser l'accès disque (obligatoire)</h2>
+<h2 id="permissions">7. Autoriser l'accès disque (obligatoire)</h2>
 <p>macOS exige l'autorisation <strong>Accès complet au disque</strong> pour qu'un backup puisse lire vos dossiers personnels et écrire sur un disque externe. Sans elle, les backups échouent silencieusement.</p>
 <p>Menu <strong>Aide → Autoriser l'accès complet au disque…</strong> ouvre directement le bon réglage. Il suffit d'activer l'interrupteur pour <strong>Backup Manager</strong> dans la liste.</p>
 
-<h2 id="disques">7. Disques externes (exFAT / NTFS / EXT)</h2>
+<h2 id="disques">8. Disques externes (exFAT / NTFS / EXT)</h2>
 <ul>
   <li><strong>exFAT / APFS / HFS+</strong> : fonctionne nativement, aucune configuration.</li>
   <li><strong>NTFS</strong> (disques formatés pour Windows) : macOS ne sait pas y <em>écrire</em> nativement. Un pilote tiers (ex. <em>Microsoft NTFS for Mac by Paragon</em>) est nécessaire — l'app le détecte automatiquement une fois installé, sans rien reconfigurer.</li>
@@ -171,20 +188,24 @@
 </ul>
 <p>Si un backup est reporté avec un message mentionnant le système de fichiers, l'app affiche un lien direct vers le bon pilote à installer.</p>
 
-<h2 id="rapide">8. Transfert rapide ⚡</h2>
+<h2 id="rapide">9. Transfert rapide ⚡</h2>
 <p>Pour copier ou déplacer un fichier/dossier ponctuellement, sans créer de job permanent : bouton <strong>⚡ Transferts rapides</strong> en haut du panneau. Une vérification par checksums confirme l'intégrité après coup ; en mode <em>déplacement</em>, la source n'est supprimée qu'après cette confirmation.</p>
 
-<h2 id="corbeille">9. Corbeille &amp; restauration</h2>
+<h2 id="corbeille">10. Corbeille &amp; restauration</h2>
 <p>Bouton <strong>Corbeille</strong> sur chaque job : parcourez les versions supprimées par date, et restaurez un fichier précis directement vers son emplacement d'origine dans la source.</p>
 <p>La rétention (nombre de jours de conservation) se règle par job via <strong>Éditer</strong>.</p>
 
-<h2 id="planification">10. Planification &amp; vérification automatique</h2>
+<h2 id="planification">11. Planification &amp; vérification automatique</h2>
 <p>Chaque job peut être <strong>planifié</strong> (heure fixe quotidienne) et/ou déclenché <strong>au branchement</strong> du disque de destination. Une <strong>vérification d'intégrité automatique</strong> (checksums complets) peut aussi tourner à intervalle régulier pour détecter une corruption silencieuse — ces réglages sont sur la carte de chaque job.</p>
 
-<h2 id="problemes">11. En cas de problème</h2>
+<h2 id="imessage">12. Alertes iPhone (iMessage)</h2>
+<p>Bouton <strong>Réglages</strong> (icône ⚙️) en haut du panneau : envoie automatiquement un <strong>iMessage</strong> vers votre iPhone quand un backup échoue ou est reporté — via l'app Messages déjà présente sur votre téléphone, sans app tierce. Renseignez votre numéro (<code>+33…</code>) ou votre identifiant Apple associé à iMessage dans <strong>Destinataire iMessage</strong>. Le Mac doit lui-même être connecté à Messages avec ce compte. Une option permet aussi d'être alerté en cas de <strong>succès</strong>, pas seulement d'échec.</p>
+<div class="warn">Au premier envoi, macOS demande d'autoriser Backup Manager à piloter l'app Messages — une permission <strong>Automatisation</strong>, distincte de l'Accès complet au disque (section <a href="#permissions">7</a>). Cliquez <strong>Autoriser l'automatisation</strong> dans la fenêtre Réglages, puis <strong>Envoyer un test</strong> pour vérifier que tout fonctionne.</div>
+
+<h2 id="problemes">13. En cas de problème</h2>
 <ul>
   <li>Icône de la barre des menus → <strong>Relancer le serveur</strong> : premier réflexe si le panneau semble figé ou ne répond plus — redémarre le moteur sans perdre vos jobs configurés (voir <a href="#menubar">section 3</a>).</li>
-  <li><strong>Voir log</strong> (sur chaque job) : journal détaillé du dernier run.</li>
+  <li><strong>Voir log</strong> (sur chaque job) : journal détaillé du dernier run — cochez <strong>suivre en direct</strong> pour un flux en temps réel pendant qu'un backup tourne.</li>
   <li>Menu <strong>Aide → Voir les journaux…</strong> : ouvre le dossier complet des logs dans le Finder.</li>
   <li>Menu <strong>Aide → Signaler un problème…</strong> : ouvre la page pour rapporter un bug avec le contexte utile.</li>
 </ul>
