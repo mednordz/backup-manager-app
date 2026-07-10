@@ -76,14 +76,14 @@
 
 <nav class="toc">
   <a href="#principe">1. Principe général</a>
-  <a href="#premier-job">2. Créer un premier backup</a>
-  <a href="#interface">3. Lire l'interface</a>
-  <a href="#permissions">4. Autoriser l'accès disque</a>
-  <a href="#disques">5. Disques externes (exFAT/NTFS/EXT)</a>
-  <a href="#rapide">6. Transfert rapide</a>
-  <a href="#corbeille">7. Corbeille &amp; restauration</a>
-  <a href="#planification">8. Planification &amp; vérification</a>
-  <a href="#gatekeeper">9. « App non identifiée » au premier lancement</a>
+  <a href="#gatekeeper">2. « App non identifiée » au premier lancement</a>
+  <a href="#premier-job">3. Créer un premier backup</a>
+  <a href="#interface">4. Lire l'interface</a>
+  <a href="#permissions">5. Autoriser l'accès disque</a>
+  <a href="#disques">6. Disques externes (exFAT/NTFS/EXT)</a>
+  <a href="#rapide">7. Transfert rapide</a>
+  <a href="#corbeille">8. Corbeille &amp; restauration</a>
+  <a href="#planification">9. Planification &amp; vérification</a>
   <a href="#problemes">10. En cas de problème</a>
 </nav>
 
@@ -92,51 +92,8 @@
 <p>Rien n'est jamais supprimé silencieusement : tout fichier disparu ou modifié dans la source est déplacé dans une <strong>corbeille datée</strong> sur la destination, pas effacé. Vous pouvez toujours revenir en arrière.</p>
 <div class="tip">Le moteur de sauvegarde tourne indépendamment de cette fenêtre : si vous fermez l'app ou redémarrez le Mac, un backup planifié se lance quand même via <code>launchd</code>.</div>
 
-<h2 id="premier-job">2. Créer un premier backup</h2>
-<ol>
-  <li>Cliquez sur le bouton <strong>+</strong> en haut à droite du panneau.</li>
-  <li>Choisissez le dossier <strong>source</strong> à sauvegarder et le disque de <strong>destination</strong>.</li>
-  <li>Donnez un nom au job, ajustez les exclusions si besoin (par défaut : fichiers système macOS comme <code>.DS_Store</code>).</li>
-  <li>Cliquez <strong>Lancer</strong> pour un premier backup immédiat, ou <strong>Simuler</strong> pour voir ce qui serait fait sans rien écrire.</li>
-</ol>
-<div class="warn">Avant de lancer un gros backup, l'app affiche automatiquement <strong>« À transférer : X → assez de place ✅/⚠️ »</strong> à côté de l'espace disque disponible — vérifiez ce verdict avant de lancer.</div>
-
-<h2 id="interface">3. Lire l'interface</h2>
-<h3>Statut du dernier run</h3>
-<p>
-  <span class="badge green">dernière : OK</span>
-  <span class="badge red">dernière : échec</span>
-  <span class="badge amber">dernière : reportée</span>
-  <span class="badge amber">dernière : interrompue</span>
-</p>
-<p>Une sauvegarde <strong>reportée</strong> (badge ambre) n'est pas une erreur qui a corrompu quoi que ce soit — c'est le contraire : un garde-fou a refusé d'agir par précaution (disque non branché, source qui semble vide, etc.) plutôt que de risquer d'effacer des données. Le miroir existant reste toujours intact dans ce cas.</p>
-<h3>Comparaison source ↔ miroir</h3>
-<p>Chaque job compare automatiquement sa source et son miroir dès que vous ouvrez le panneau — <strong>aucun clic requis</strong>. <span class="badge green">✅ Source et miroir identiques</span> confirme que tout est à jour ; sinon le nombre d'éléments à ajouter/mettre à jour/supprimer est détaillé.</p>
-
-<h2 id="permissions">4. Autoriser l'accès disque (obligatoire)</h2>
-<p>macOS exige l'autorisation <strong>Accès complet au disque</strong> pour qu'un backup puisse lire vos dossiers personnels et écrire sur un disque externe. Sans elle, les backups échouent silencieusement.</p>
-<p>Menu <strong>Aide → Autoriser l'accès complet au disque…</strong> ouvre directement le bon réglage. Il suffit d'activer l'interrupteur pour <strong>Backup Manager</strong> dans la liste.</p>
-
-<h2 id="disques">5. Disques externes (exFAT / NTFS / EXT)</h2>
-<ul>
-  <li><strong>exFAT / APFS / HFS+</strong> : fonctionne nativement, aucune configuration.</li>
-  <li><strong>NTFS</strong> (disques formatés pour Windows) : macOS ne sait pas y <em>écrire</em> nativement. Un pilote tiers (ex. <em>Microsoft NTFS for Mac by Paragon</em>) est nécessaire — l'app le détecte automatiquement une fois installé, sans rien reconfigurer.</li>
-  <li><strong>EXT2/3/4</strong> (disques Linux) : nécessite aussi un pilote tiers (ex. <em>Paragon ExtFS</em>). Même détection automatique.</li>
-</ul>
-<p>Si un backup est reporté avec un message mentionnant le système de fichiers, l'app affiche un lien direct vers le bon pilote à installer.</p>
-
-<h2 id="rapide">6. Transfert rapide ⚡</h2>
-<p>Pour copier ou déplacer un fichier/dossier ponctuellement, sans créer de job permanent : bouton <strong>⚡ Transferts rapides</strong> en haut du panneau. Une vérification par checksums confirme l'intégrité après coup ; en mode <em>déplacement</em>, la source n'est supprimée qu'après cette confirmation.</p>
-
-<h2 id="corbeille">7. Corbeille &amp; restauration</h2>
-<p>Bouton <strong>Corbeille</strong> sur chaque job : parcourez les versions supprimées par date, et restaurez un fichier précis directement vers son emplacement d'origine dans la source.</p>
-<p>La rétention (nombre de jours de conservation) se règle par job via <strong>Éditer</strong>.</p>
-
-<h2 id="planification">8. Planification &amp; vérification automatique</h2>
-<p>Chaque job peut être <strong>planifié</strong> (heure fixe quotidienne) et/ou déclenché <strong>au branchement</strong> du disque de destination. Une <strong>vérification d'intégrité automatique</strong> (checksums complets) peut aussi tourner à intervalle régulier pour détecter une corruption silencieuse — ces réglages sont sur la carte de chaque job.</p>
-
-<h2 id="gatekeeper">9. « App non identifiée » au premier lancement</h2>
-<p>Backup Manager n'est pas distribué sur l'App Store — au tout premier lancement, macOS affiche un avertissement de sécurité (Gatekeeper) car l'app vient d'être téléchargée. C'est normal et attendu, pas un signe de problème. Voici la marche à suivre, étape par étape :</p>
+<h2 id="gatekeeper">2. « App non identifiée » au premier lancement</h2>
+<p>Backup Manager n'est pas distribué sur l'App Store — au tout premier lancement, avant même de pouvoir créer un job, macOS affiche un avertissement de sécurité (Gatekeeper) car l'app vient d'être téléchargée. C'est normal et attendu, pas un signe de problème. Voici la marche à suivre, étape par étape :</p>
 <ol class="steps">
   <li>
     Double-cliquez sur <strong>Backup Manager.app</strong>. macOS affiche « Élément « BackupManager.app » non ouvert » et propose seulement « Placer dans la corbeille » ou « Terminé ». <strong>Cliquez sur « Terminé »</strong> — ne mettez rien à la corbeille.
@@ -146,7 +103,7 @@
     </figure>
   </li>
   <li>
-    Ouvrez <strong> Réglages Système → Confidentialité et sécurité</strong> (ou via le menu <strong>Aide → Autoriser l'accès complet au disque…</strong> de Backup Manager, qui ouvre le même panneau). Faites défiler jusqu'à la section <strong>Sécurité</strong> : une ligne mentionne que « BackupManager.app » a été bloquée, avec un bouton <strong>« Ouvrir quand même »</strong>.
+    Ouvrez <strong>Réglages Système → Confidentialité et sécurité</strong> et faites défiler jusqu'à la section <strong>Sécurité</strong>, tout en bas de l'écran général : une ligne mentionne que « BackupManager.app » a été bloquée, avec un bouton <strong>« Ouvrir quand même »</strong>. <em>(Cet écran est différent de l'Accès complet au disque décrit à la section <a href="#permissions">5</a> — pas besoin d'y toucher ici.)</em>
     <figure>
       <img src="help-images/gatekeeper-2-reglages.png" alt="Réglages Système, section Sécurité, avec le message « BackupManager.app a été bloqué pour protéger votre Mac » et le bouton Ouvrir quand même">
       <figcaption>Cliquez « Ouvrir quand même » dans Réglages Système.</figcaption>
@@ -167,7 +124,50 @@
     </figure>
   </li>
 </ol>
-<div class="tip">Cette procédure n'est nécessaire qu'une seule fois par installation. Elle réapparaît uniquement si l'app est remplacée par une nouvelle copie téléchargée manuellement (les mises à jour automatiques via le menu <strong>Backup Manager → Rechercher les mises à jour…</strong> ne redéclenchent pas cet avertissement).</div>
+<div class="tip">Cette procédure n'est nécessaire qu'une seule fois par installation. Elle réapparaît uniquement si l'app est remplacée par une nouvelle copie téléchargée manuellement (les mises à jour automatiques via le menu <strong>Backup Manager → Rechercher les mises à jour…</strong> ne redéclenchent pas cet avertissement). Sur macOS Ventura/Sonoma (13/14), un simple clic droit sur l'app puis <strong>Ouvrir</strong> propose parfois directement un bouton « Ouvrir » sans passer par Réglages Système — la procédure ci-dessus fonctionne dans tous les cas, y compris sur macOS 15 (Sequoia) et plus récent, où c'est la seule option.</div>
+
+<h2 id="premier-job">3. Créer un premier backup</h2>
+<ol>
+  <li>Cliquez sur le bouton <strong>+</strong> en haut à droite du panneau.</li>
+  <li>Choisissez le dossier <strong>source</strong> à sauvegarder et le disque de <strong>destination</strong>.</li>
+  <li>Donnez un nom au job, ajustez les exclusions si besoin (par défaut : fichiers système macOS comme <code>.DS_Store</code>).</li>
+  <li>Cliquez <strong>Lancer</strong> pour un premier backup immédiat, ou <strong>Simuler</strong> pour voir ce qui serait fait sans rien écrire.</li>
+</ol>
+<div class="warn">Avant de lancer un gros backup, l'app affiche automatiquement <strong>« À transférer : X → assez de place ✅/⚠️ »</strong> à côté de l'espace disque disponible — vérifiez ce verdict avant de lancer.</div>
+
+<h2 id="interface">4. Lire l'interface</h2>
+<h3>Statut du dernier run</h3>
+<p>
+  <span class="badge green">dernière : OK</span>
+  <span class="badge red">dernière : échec</span>
+  <span class="badge amber">dernière : reportée</span>
+  <span class="badge amber">dernière : interrompue</span>
+</p>
+<p>Une sauvegarde <strong>reportée</strong> (badge ambre) n'est pas une erreur qui a corrompu quoi que ce soit — c'est le contraire : un garde-fou a refusé d'agir par précaution (disque non branché, source qui semble vide, etc.) plutôt que de risquer d'effacer des données. Le miroir existant reste toujours intact dans ce cas.</p>
+<h3>Comparaison source ↔ miroir</h3>
+<p>Chaque job compare automatiquement sa source et son miroir dès que vous ouvrez le panneau — <strong>aucun clic requis</strong>. <span class="badge green">✅ Source et miroir identiques</span> confirme que tout est à jour ; sinon le nombre d'éléments à ajouter/mettre à jour/supprimer est détaillé.</p>
+
+<h2 id="permissions">5. Autoriser l'accès disque (obligatoire)</h2>
+<p>macOS exige l'autorisation <strong>Accès complet au disque</strong> pour qu'un backup puisse lire vos dossiers personnels et écrire sur un disque externe. Sans elle, les backups échouent silencieusement.</p>
+<p>Menu <strong>Aide → Autoriser l'accès complet au disque…</strong> ouvre directement le bon réglage. Il suffit d'activer l'interrupteur pour <strong>Backup Manager</strong> dans la liste.</p>
+
+<h2 id="disques">6. Disques externes (exFAT / NTFS / EXT)</h2>
+<ul>
+  <li><strong>exFAT / APFS / HFS+</strong> : fonctionne nativement, aucune configuration.</li>
+  <li><strong>NTFS</strong> (disques formatés pour Windows) : macOS ne sait pas y <em>écrire</em> nativement. Un pilote tiers (ex. <em>Microsoft NTFS for Mac by Paragon</em>) est nécessaire — l'app le détecte automatiquement une fois installé, sans rien reconfigurer.</li>
+  <li><strong>EXT2/3/4</strong> (disques Linux) : nécessite aussi un pilote tiers (ex. <em>Paragon ExtFS</em>). Même détection automatique.</li>
+</ul>
+<p>Si un backup est reporté avec un message mentionnant le système de fichiers, l'app affiche un lien direct vers le bon pilote à installer.</p>
+
+<h2 id="rapide">7. Transfert rapide ⚡</h2>
+<p>Pour copier ou déplacer un fichier/dossier ponctuellement, sans créer de job permanent : bouton <strong>⚡ Transferts rapides</strong> en haut du panneau. Une vérification par checksums confirme l'intégrité après coup ; en mode <em>déplacement</em>, la source n'est supprimée qu'après cette confirmation.</p>
+
+<h2 id="corbeille">8. Corbeille &amp; restauration</h2>
+<p>Bouton <strong>Corbeille</strong> sur chaque job : parcourez les versions supprimées par date, et restaurez un fichier précis directement vers son emplacement d'origine dans la source.</p>
+<p>La rétention (nombre de jours de conservation) se règle par job via <strong>Éditer</strong>.</p>
+
+<h2 id="planification">9. Planification &amp; vérification automatique</h2>
+<p>Chaque job peut être <strong>planifié</strong> (heure fixe quotidienne) et/ou déclenché <strong>au branchement</strong> du disque de destination. Une <strong>vérification d'intégrité automatique</strong> (checksums complets) peut aussi tourner à intervalle régulier pour détecter une corruption silencieuse — ces réglages sont sur la carte de chaque job.</p>
 
 <h2 id="problemes">10. En cas de problème</h2>
 <ul>
