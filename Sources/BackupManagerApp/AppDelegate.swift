@@ -5,7 +5,7 @@ import WebKit
 /// makes 127.0.0.1:8787 unreliable, so the panel loads over the LAN IP.
 let panelURL = URL(string: "http://\(LocalNetwork.currentLANAddress() ?? "127.0.0.1"):8787")!
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMessageHandler, FlaskSupervisorDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMessageHandler, WKUIDelegate, FlaskSupervisorDelegate {
     private var statusItem: NSStatusItem?
     private var window: NSWindow?
     private var webView: WKWebView?
@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private let jobPoller = JobPoller()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        setupMainMenu()
         setupStatusItem()
         showPanel()
         NotificationsManager.shared.appDelegate = self
@@ -32,6 +33,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    /// Sans menu d'application (NSApp.mainMenu), AUCUN raccourci clavier standard
+    /// n'existe (⌘R, ⌘W, ⌘Q, ⌘,, copier/coller…) : le menu du status item ne compte
+    /// pas, il ne s'applique qu'à lui-même quand il est ouvert depuis la barre de menu.
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+
+        let appMenu = NSMenu()
+        let appMenuItem = NSMenuItem()
+        appMenuItem.submenu = appMenu
+        let quitItem = NSMenuItem(title: "Quitter Backup Manager", action: #selector(quit), keyEquivalent: "q")
+        quitItem.target = self
+        appMenu.addItem(quitItem)
+        mainMenu.addItem(appMenuItem)
+
+        let editMenu = NSMenu(title: "Édition")
+        let editMenuItem = NSMenuItem()
+        editMenuItem.submenu = editMenu
+        editMenu.addItem(withTitle: "Annuler", action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: "Rétablir", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(NSMenuItem.separator())
+        editMenu.addItem(withTitle: "Couper", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copier", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Coller", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Tout sélectionner", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        mainMenu.addItem(editMenuItem)
+
+        let viewMenu = NSMenu(title: "Présentation")
+        let viewMenuItem = NSMenuItem()
+        viewMenuItem.submenu = viewMenu
+        let reloadItem = NSMenuItem(title: "Recharger", action: #selector(reloadPanel), keyEquivalent: "r")
+        reloadItem.target = self
+        viewMenu.addItem(reloadItem)
+        mainMenu.addItem(viewMenuItem)
+
+        let windowMenu = NSMenu(title: "Fenêtre")
+        let windowMenuItem = NSMenuItem()
+        windowMenuItem.submenu = windowMenu
+        windowMenu.addItem(NSMenuItem(title: "Réduire", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"))
+        windowMenu.addItem(NSMenuItem(title: "Fermer", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+        mainMenu.addItem(windowMenuItem)
+        NSApp.windowsMenu = windowMenu
+
+        NSApp.mainMenu = mainMenu
+    }
+
+    @objc private func reloadPanel() {
+        webView?.reload()
     }
 
     private func setupStatusItem() {
@@ -114,6 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         config.userContentController = contentController
 
         let webView = WKWebView(frame: .zero, configuration: config)
+        webView.uiDelegate = self   // sans ça, window.confirm()/alert() de app.js ne font rien
         webView.loadHTMLString(Self.startingHTML, baseURL: nil)
         self.webView = webView
 
@@ -140,6 +191,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     <p>Démarrage du serveur…</p></body></html>
     """
 
+    // MARK: - WKUIDelegate (window.confirm()/alert() de app.js -> NSAlert native)
+
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Annuler")
+        alert.alertStyle = .warning
+        completionHandler(alert.runModal() == .alertFirstButtonReturn)
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+        completionHandler()
+    }
+
     // MARK: - WKScriptMessageHandler (bridge from app.js's quitApp()/restartApp())
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -164,7 +236,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
                 webView?.reload()
             }
         case .stoppedByUser:
-            restartMenuItem?.isHidden = false
+            // Flask a été arrêté suite à un clic sur « Quitter » (app.js -> postMessage
+            // "quit" -> markIntentionalQuit()) : ça ne signifiait jusqu'ici que l'arrêt
+            // du serveur, pas de l'app elle-même — Dock/barre de menu restaient actifs
+            // indéfiniment. On termine maintenant vraiment l'application.
+            NSApp.terminate(nil)
         case .crashed:
             restartMenuItem?.isHidden = false
         }
