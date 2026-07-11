@@ -8,7 +8,7 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUP_MANAGER_DIR="$HOME/backup-manager"
-SRC_ICON="$BACKUP_MANAGER_DIR/menubar-icon.svg"
+BRAND_DIR="$PROJECT_DIR/Sources/BackupManagerApp/Resources/Brand"
 BUILD_DIR="$PROJECT_DIR/.build"
 APP_NAME="BackupManager"
 APP_DIR="$PROJECT_DIR/dist/$APP_NAME.app"
@@ -103,20 +103,27 @@ echo "==> bundling uninstall.sh (menu Aide -> Désinstaller complètement…)"
 cp "$PROJECT_DIR/Sources/BackupManagerApp/Resources/uninstall.sh" "$APP_DIR/Contents/Resources/uninstall.sh"
 chmod +x "$APP_DIR/Contents/Resources/uninstall.sh"
 
-echo "==> generating icons from $SRC_ICON"
+echo "==> generating icons from $BRAND_DIR (brand kit)"
+# AppIcon : composé une fois (tuile blanche + symbole officiel centré à 60% de
+# hauteur, rayon 25% -- voir design_handoff_brand/README.md) et vérifié
+# manuellement ; déjà carré (1024x1024), simple redimensionnement ici, aucune
+# dépendance externe (sips est du CLT de base, contrairement à rsvg-convert).
 ICONSET="$PROJECT_DIR/.build/AppIcon.iconset"
 rm -rf "$ICONSET"
 mkdir -p "$ICONSET"
 for size in 16 32 128 256 512; do
-  rsvg-convert -w "$size" -h "$size" "$SRC_ICON" -o "$ICONSET/icon_${size}x${size}.png"
+  sips -z "$size" "$size" "$BRAND_DIR/appicon-1024.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
   double=$((size * 2))
-  rsvg-convert -w "$double" -h "$double" "$SRC_ICON" -o "$ICONSET/icon_${size}x${size}@2x.png"
+  sips -z "$double" "$double" "$BRAND_DIR/appicon-1024.png" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
 
-# menubar status-item icon (template image: macOS recolors it per theme)
-rsvg-convert -w 18 -h 18 "$SRC_ICON" -o "$APP_DIR/Contents/Resources/StatusIcon.png"
-rsvg-convert -w 36 -h 36 "$SRC_ICON" -o "$APP_DIR/Contents/Resources/StatusIcon@2x.png"
+# menubar status-item icon (template image: macOS recolors it per theme) --
+# silhouette noire dérivée du canal alpha du symbole officiel (jamais
+# recoloré/redessiné, juste aplati en silhouette comme l'exige un NSImage
+# template). Pas carrée (1024x1179) : -Z préserve le ratio plutôt que déformer.
+sips -Z 18 "$BRAND_DIR/symbol-mono.png" --out "$APP_DIR/Contents/Resources/StatusIcon.png" >/dev/null
+sips -Z 36 "$BRAND_DIR/symbol-mono.png" --out "$APP_DIR/Contents/Resources/StatusIcon@2x.png" >/dev/null
 
 echo "==> writing Info.plist"
 cat > "$APP_DIR/Contents/Info.plist" <<PLIST

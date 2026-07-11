@@ -1,3 +1,5 @@
+![BackupManager](Sources/BackupManagerApp/Resources/Brand/github-banner.png)
+
 # BackupManager (native shell)
 
 Coquille native macOS (Swift/AppKit) pour [backup-manager](https://github.com/mednordz/backup-manager) (privé) :
