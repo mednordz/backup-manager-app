@@ -63,6 +63,25 @@ final class FlaskSupervisor {
         intentionalQuit = true
     }
 
+    /// Termine le process app.py, si un est en cours. Appelé depuis
+    /// applicationWillTerminate — sans ça, le child process (lancé via
+    /// Process(), pas dans le même groupe de process que l'app) devient
+    /// orphelin et continue de tourner indéfiniment après que l'app ait
+    /// quitté, gardant le port 8787 occupé pour la prochaine instance
+    /// (constaté en usage réel : un process zombie datant d'un lancement
+    /// précédent a survécu à plusieurs cycles quitter/relancer, y compris
+    /// une désinstallation complète, et répondait toujours aux requêtes API
+    /// à la place de la nouvelle instance).
+    func stop() {
+        guard let p = process else { return }
+        p.terminationHandler = nil
+        if p.isRunning {
+            p.terminate()
+            p.waitUntilExit()
+        }
+        process = nil
+    }
+
     func manualRestart() {
         generation += 1
         healthTimer?.cancel()

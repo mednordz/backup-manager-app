@@ -75,8 +75,13 @@ shopt -u nullglob
 echo "==> Arrêt des processus restants"
 pkill -TERM -f "backup-engine.sh" >/dev/null 2>&1 || true
 pkill -TERM -f "bin/bmengine" >/dev/null 2>&1 || true
+# Filet de sécurité pour un éventuel serveur Flask déjà orphelin (constaté en
+# usage réel : un process app.py peut survivre à une fermeture normale de
+# l'app si elle a quitté avant ce correctif — voir FlaskSupervisor.stop()).
+pkill -TERM -f "backup-manager/app.py" >/dev/null 2>&1 || true
 sleep 1
 pkill -KILL -f "backup-engine.sh" >/dev/null 2>&1 || true
+pkill -KILL -f "backup-manager/app.py" >/dev/null 2>&1 || true
 rm -f /tmp/backup-*.lock >/dev/null 2>&1 || true
 rmdir /tmp/backup-*.lock >/dev/null 2>&1 || true
 
@@ -115,6 +120,24 @@ if [ -d "$APP_PATH" ]; then
 else
   echo "   $APP_PATH introuvable (déjà déplacée ou supprimée ?)"
 fi
+
+echo "==> Retrait de l'icône du Dock (si épinglée manuellement)"
+python3 - <<'PYEOF' >/dev/null 2>&1 || true
+import plistlib, os
+path = os.path.expanduser("~/Library/Preferences/com.apple.dock.plist")
+try:
+    with open(path, "rb") as f:
+        data = plistlib.load(f)
+except FileNotFoundError:
+    raise SystemExit
+apps = data.get("persistent-apps", [])
+kept = [e for e in apps if "BackupManager.app" not in e.get("tile-data", {}).get("file-data", {}).get("_CFURLString", "")]
+if len(kept) != len(apps):
+    data["persistent-apps"] = kept
+    with open(path, "wb") as f:
+        plistlib.dump(data, f)
+PYEOF
+killall Dock >/dev/null 2>&1 || true
 
 echo
 echo "==================================================================="

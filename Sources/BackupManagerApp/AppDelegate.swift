@@ -36,6 +36,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         false
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        supervisor.stop()
+    }
+
     /// Sans menu d'application (NSApp.mainMenu), AUCUN raccourci clavier standard
     /// n'existe (⌘R, ⌘W, ⌘Q, ⌘,, copier/coller…) : le menu du status item ne compte
     /// pas, il ne s'applique qu'à lui-même quand il est ouvert depuis la barre de menu.
@@ -211,6 +215,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         menu.addItem(loginItem)
         loginItemMenuItem = loginItem
         menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "Exporter les jobs…", action: #selector(exportJobs), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Restaurer les jobs…", action: #selector(restoreJobs), keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quitter", action: #selector(quit), keyEquivalent: "q"))
         for menuItem in menu.items {
             menuItem.target = self
@@ -225,6 +232,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
 
     @objc private func restartServer() {
         supervisor.manualRestart()
+    }
+
+    @objc private func exportJobs() {
+        JobsBackup.exportJobs()
+    }
+
+    @objc private func restoreJobs() {
+        JobsBackup.restoreJobs()
     }
 
     @objc private func toggleLoginItem() {

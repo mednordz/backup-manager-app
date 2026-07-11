@@ -138,8 +138,11 @@
   <li><strong>Tester la notification</strong> : envoie une notification macOS de test, pour vérifier qu'elles sont bien autorisées pour Backup Manager.</li>
   <li><strong>Rechercher les mises à jour…</strong> : vérifie manuellement si une nouvelle version est disponible. L'app vérifie aussi automatiquement en arrière-plan (une fois par jour) et propose l'installation sans repasser par l'avertissement Gatekeeper de la <a href="#gatekeeper">section 2</a>.</li>
   <li><strong>Ouvrir au démarrage</strong> : active ou désactive le lancement automatique de Backup Manager à la connexion à votre compte.</li>
+  <li><strong>Exporter les jobs…</strong> : enregistre une copie de la configuration de tous vos jobs (planification, exclusions, vérification…) dans un dossier de votre choix — pas les données déjà sauvegardées elles-mêmes, seulement la configuration qui les décrit.</li>
+  <li><strong>Restaurer les jobs…</strong> : recrée les jobs à partir d'un dossier exporté précédemment, en réactivant leur planification, déclenchement au branchement et vérification d'origine. Un job dont l'identifiant existe déjà n'est jamais écrasé — il est simplement ignoré.</li>
   <li><strong>Quitter</strong> : ferme complètement l'app. Les backups planifiés continuent malgré tout à s'exécuter via <code>launchd</code> (voir <a href="#principe">section 1</a>) — quitter l'app arrête seulement le panneau et son serveur local, pas les sauvegardes programmées.</li>
 </ul>
+<div class="tip">L'export des jobs est aussi une bonne précaution avant une désinstallation ou un changement de Mac : la désinstallation complète (<a href="#desinstaller">section 14</a>) sauvegarde déjà automatiquement vos jobs sur le Bureau, mais <strong>Exporter les jobs…</strong> permet de le faire à tout moment, vers l'emplacement de votre choix.</div>
 
 <h2 id="premier-job">4. Créer un premier backup</h2>
 <ol>
