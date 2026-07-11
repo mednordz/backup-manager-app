@@ -197,8 +197,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
-            button.image = NSImage(named: "StatusIcon")
-            button.image?.isTemplate = true
+            // Symbole officiel en couleurs réelles (encre + dégradé menthe) --
+            // PAS un template monochrome : la charte montre explicitement le
+            // symbole en couleur dans la barre de menus (voir Brand Board,
+            // panneau "BARRE DE MENUS"), jamais recoloré ni aplati en silhouette.
+            // isTemplate DOIT être positionné AVANT l'affectation à
+            // button.image : NSStatusBarButton fige son mode de rendu au
+            // moment de l'affectation, le repositionner après est trop tard
+            // et l'image reste rendue en gabarit noir/blanc (constaté en
+            // conditions réelles).
+            let icon = NSImage(named: "StatusIcon")
+            icon?.isTemplate = false
+            button.image = icon
         }
 
         let menu = NSMenu()
@@ -399,13 +409,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         updateStatusIcon(jobs: jobs)
     }
 
-    /// Fait vivre l'icône de la barre de menu : gabarit noir/blanc par
-    /// défaut (idle), bleue pendant une sauvegarde, rouge dès qu'un job a
-    /// échoué ou est bloqué par un montage/permission — plus besoin
-    /// d'ouvrir le panneau pour repérer un problème.
+    /// Fait vivre l'icône de la barre de menu : symbole officiel en couleurs
+    /// réelles par défaut (idle), avec un petit badge bleu pendant une
+    /// sauvegarde ou rouge dès qu'un job a échoué ou est bloqué par un
+    /// montage/permission — plus besoin d'ouvrir le panneau pour repérer un
+    /// problème. Le badge se superpose au symbole, il ne le recolore jamais.
     private func updateStatusIcon(jobs: [[String: Any]]) {
         guard let button = statusItem?.button, let base = NSImage(named: "StatusIcon") else { return }
-        base.isTemplate = true
+        base.isTemplate = false
         let activity = MenuBarStatus.activity(fromJobs: jobs)
         button.image = MenuBarStatus.icon(for: activity, base: base)
         button.toolTip = MenuBarStatus.tooltip(for: activity)

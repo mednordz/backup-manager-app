@@ -118,12 +118,14 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
 
-# menubar status-item icon (template image: macOS recolors it per theme) --
-# silhouette noire dérivée du canal alpha du symbole officiel (jamais
-# recoloré/redessiné, juste aplati en silhouette comme l'exige un NSImage
-# template). Pas carrée (1024x1179) : -Z préserve le ratio plutôt que déformer.
-sips -Z 18 "$BRAND_DIR/symbol-mono.png" --out "$APP_DIR/Contents/Resources/StatusIcon.png" >/dev/null
-sips -Z 36 "$BRAND_DIR/symbol-mono.png" --out "$APP_DIR/Contents/Resources/StatusIcon@2x.png" >/dev/null
+# menubar status-item icon : symbole officiel en COULEURS RÉELLES, pas un
+# template monochrome -- la charte montre explicitement ce contexte en
+# couleur (Brand Board, panneau "BARRE DE MENUS"). isTemplate=false côté
+# Swift (AppDelegate/MenuBarStatus) ; le statut d'activité se signale par un
+# petit badge superposé, jamais en recolorant le symbole. Pas carrée
+# (1024x1179) : -Z préserve le ratio plutôt que déformer.
+sips -Z 18 "$BRAND_DIR/symbol.png" --out "$APP_DIR/Contents/Resources/StatusIcon.png" >/dev/null
+sips -Z 36 "$BRAND_DIR/symbol.png" --out "$APP_DIR/Contents/Resources/StatusIcon@2x.png" >/dev/null
 
 echo "==> writing Info.plist"
 cat > "$APP_DIR/Contents/Info.plist" <<PLIST

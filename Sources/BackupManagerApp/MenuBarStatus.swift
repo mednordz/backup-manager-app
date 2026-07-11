@@ -42,32 +42,36 @@ enum MenuBarStatus {
         }
     }
 
-    /// Teinte l'icône gabarit (StatusIcon, noire à canal alpha) d'une couleur
-    /// unie plutôt que d'y superposer un badge : reste lisible aussi bien
-    /// sur une barre de menu claire que sombre.
+    /// StatusIcon est désormais le symbole officiel en couleurs réelles (voir
+    /// Brand Board, panneau "BARRE DE MENUS" -- montré en couleur, jamais en
+    /// silhouette). On ne le teint donc plus jamais d'une couleur unie (ça
+    /// reviendrait à recolorer le symbole, explicitement interdit par la
+    /// charte) : un petit badge rond se superpose en bas à droite à la
+    /// place, sans jamais toucher aux pixels du symbole lui-même.
     static func icon(for activity: MenuBarActivity, base: NSImage) -> NSImage {
         switch activity {
         case .idle:
             let icon = (base.copy() as? NSImage) ?? base
-            icon.isTemplate = true
+            icon.isTemplate = false
             return icon
         case .running:
-            return tinted(base, color: .systemBlue)
+            return badged(base, color: .systemBlue)
         case .attention:
-            return tinted(base, color: .systemRed)
+            return badged(base, color: .systemRed)
         }
     }
 
-    private static func tinted(_ image: NSImage, color: NSColor) -> NSImage {
+    private static func badged(_ image: NSImage, color: NSColor) -> NSImage {
         let size = image.size
-        let tinted = NSImage(size: size)
-        tinted.lockFocus()
-        color.set()
-        let rect = NSRect(origin: .zero, size: size)
-        image.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
-        rect.fill(using: .sourceAtop)
-        tinted.unlockFocus()
-        tinted.isTemplate = false
-        return tinted
+        let badged = NSImage(size: size)
+        badged.lockFocus()
+        image.draw(in: NSRect(origin: .zero, size: size), from: .zero, operation: .sourceOver, fraction: 1.0)
+        let d = min(size.width, size.height) * 0.5
+        let badgeRect = NSRect(x: size.width - d * 0.92, y: 0, width: d, height: d)
+        color.setFill()
+        NSBezierPath(ovalIn: badgeRect).fill()
+        badged.unlockFocus()
+        badged.isTemplate = false
+        return badged
     }
 }
