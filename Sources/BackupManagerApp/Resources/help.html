@@ -146,9 +146,10 @@
 
 <h2 id="premier-job">4. Créer un premier backup</h2>
 <ol>
-  <li>Cliquez sur le bouton <strong>+</strong> en haut à droite du panneau.</li>
+  <li>Cliquez sur le bouton <strong>+ Nouveau job</strong> en haut à droite du panneau — la fenêtre qui s'ouvre s'appelle <strong>Éditer le job</strong> (même formulaire pour créer et pour modifier un job existant).</li>
   <li>Choisissez le dossier <strong>source</strong> à sauvegarder et le disque de <strong>destination</strong>.</li>
-  <li>Donnez un nom au job, ajustez les exclusions si besoin (par défaut : fichiers système macOS comme <code>.DS_Store</code>).</li>
+  <li>Donnez un nom au job — c'est distinct de l'<strong>Identifiant technique</strong> (minuscules, chiffres, tirets uniquement, ex. <code>b03-to-b04</code>) qui n'est plus modifiable une fois le job créé : il sert en interne (fichiers de config, launchd) et n'a pas besoin d'être joli, contrairement au nom affiché.</li>
+  <li>Ajustez les <strong>Exclusions</strong> si besoin (un motif rsync par ligne) — par défaut : fichiers système macOS comme <code>.DS_Store</code>.</li>
   <li><strong>Sous-dossier du miroir</strong> (optionnel) : par défaut, le miroir prend le nom du dernier segment du dossier source. Utile pour renommer ou pour éviter les collisions quand plusieurs jobs partagent le même disque de destination.</li>
   <li>Cliquez <strong>Lancer</strong> pour un premier backup immédiat, ou <strong>Simuler</strong> pour voir ce qui serait fait sans rien écrire.</li>
 </ol>
@@ -159,13 +160,22 @@
 <ul>
   <li><strong>Hôte</strong> : nom réseau ou IP (ex. <code>mon-nas.local</code> ou <code>192.168.1.10</code>).</li>
   <li><strong>Port</strong> : 22 par défaut.</li>
-  <li><strong>Utilisateur SSH</strong> et <strong>chemin distant</strong> : dossier de destination sur la machine distante (ex. <code>/data/backups</code>).</li>
+  <li><strong>Utilisateur SSH</strong> et <strong>Chemin distant</strong> : dossier de destination sur la machine distante (ex. <code>/data/backups</code>).</li>
   <li><strong>Chemin rsync distant</strong> (optionnel) : à préciser seulement si <code>rsync</code> n'est pas dans le <code>PATH</code> standard de la machine distante.</li>
 </ul>
 <div class="warn">Authentification par <strong>clé SSH uniquement</strong> (pas de mot de passe) : la clé publique de ce Mac doit déjà être ajoutée à <code>~/.ssh/authorized_keys</code> sur la machine distante, et la clé privée chargée dans l'agent SSH local, <strong>avant</strong> de lancer le premier backup.</div>
 <div class="tip">La comparaison source/miroir (section <a href="#interface">6</a>) fonctionne à l'identique sur une destination distante : même nombre d'éléments, même taille en octets — aucune tolérance d'écart, que la destination soit un disque local ou un serveur SSH.</div>
 
 <h2 id="interface">6. Lire l'interface</h2>
+<h3>Barre d'outils du panneau</h3>
+<p>En haut du panneau, en plus du bouton <strong>+ Nouveau job</strong> (section <a href="#premier-job">4</a>) et de <strong>⚡ Transferts rapides</strong> (section <a href="#rapide">9</a>) :</p>
+<ul>
+  <li><strong>Rafraîchir</strong> : recharge la liste des jobs depuis le serveur (utile si vous avez modifié un job depuis un autre appareil, voir ci-dessous).</li>
+  <li><strong>Réglages (notifications push…)</strong> : ouvre les alertes iMessage (section <a href="#imessage">12</a>).</li>
+  <li><strong>Redémarrer l'application (recharge le code)</strong> (icône ↺) : redémarre le serveur local sans quitter — recharge le code sans perdre vos jobs configurés. Équivalent du <strong>Relancer le serveur</strong> du menu barre des menus (section <a href="#menubar">3</a>), mais accessible depuis le panneau lui-même — utile en particulier si vous consultez le panneau depuis un autre appareil du réseau local (voir ci-dessous), où le menu barre des menus n'existe pas.</li>
+  <li><strong>Fermer l'application</strong> (icône rouge) : ferme complètement Backup Manager depuis le panneau — équivalent du <strong>Quitter</strong> du menu barre des menus.</li>
+</ul>
+<div class="tip">Le badge <strong>« local »</strong> à côté du titre (infobulle : <em>Accessible sur le réseau local</em>) indique que le panneau est aussi accessible depuis un autre appareil de votre réseau local (iPhone, autre Mac…) via <code>http://&lt;nom-ou-IP-de-ce-Mac&gt;:8787</code> — pas seulement depuis l'app native sur ce Mac. Si vous consultez le panneau ainsi et que Backup Manager est fermé sur ce Mac (ou son serveur redémarré), l'écran affiche <strong>« Application fermée »</strong> : ce n'est pas une erreur, il suffit de rouvrir l'app sur le Mac pour que le panneau redevienne accessible.</div>
 <h3>Statut du dernier run</h3>
 <p>
   <span class="badge green">dernière : OK</span>
@@ -177,9 +187,11 @@
 <h3>Comparaison source ↔ miroir</h3>
 <p>Chaque job compare automatiquement sa source et son miroir dès que vous ouvrez le panneau — <strong>aucun clic requis</strong>. <span class="badge green">✅ Source et miroir identiques</span> confirme que tout est à jour ; sinon le nombre d'éléments à ajouter/mettre à jour/supprimer est détaillé.</p>
 <h3>Pendant l'exécution d'un backup</h3>
-<p>Une fenêtre de progression s'affiche : pourcentage, vitesse, temps restant estimé, et la phase en cours. Le bouton <strong>Arrêter</strong> interrompt le backup à tout moment sans risque — rsync écrit chaque fichier dans un temporaire puis le bascule seulement une fois complet, donc rien n'est jamais laissé à moitié écrit dans le miroir. Le badge affiche alors <span class="badge amber">dernière : interrompue</span>, pas un échec.</p>
+<p>Une fenêtre de progression s'affiche : d'abord <strong>« Préparation… »</strong> le temps que le moteur démarre, puis pourcentage, vitesse, temps restant estimé, et la phase en cours. Le bouton <strong>Arrêter</strong> interrompt le backup à tout moment sans risque — rsync écrit chaque fichier dans un temporaire puis le bascule seulement une fois complet, donc rien n'est jamais laissé à moitié écrit dans le miroir. Le badge affiche alors <span class="badge amber">dernière : interrompue</span>, pas un échec.</p>
 <h3>Historique des runs</h3>
-<p>Bouton <strong>Historique</strong> en haut du panneau : liste tous les runs passés, tous jobs confondus, avec filtres par job et par plage de dates.</p>
+<p>Bouton <strong>Historique</strong> en haut du panneau : liste tous les runs passés, tous jobs confondus, avec filtres par job et par plage de dates — bouton <strong>Réinitialiser</strong> pour revenir à la vue non filtrée.</p>
+<h3>Journal détaillé</h3>
+<p>Bouton <strong>Journal</strong> sur chaque job : affiche le journal texte brut de ce job précis (toutes les lignes écrites par le moteur de backup) — plus détaillé que l'Historique, mais limité à un seul job à la fois plutôt qu'une vue d'ensemble filtrable.</p>
 
 <h2 id="permissions">7. Autoriser l'accès disque (obligatoire)</h2>
 <p>macOS exige l'autorisation <strong>Accès complet au disque</strong> pour qu'un backup puisse lire vos dossiers personnels et écrire sur un disque externe. Sans elle, les backups échouent silencieusement.</p>
@@ -204,7 +216,7 @@
 <p>Chaque job peut être <strong>planifié</strong> (heure fixe quotidienne) et/ou déclenché <strong>au branchement</strong> du disque de destination. Une <strong>vérification d'intégrité automatique</strong> (checksums complets) peut aussi tourner à intervalle régulier pour détecter une corruption silencieuse — ces réglages sont sur la carte de chaque job.</p>
 
 <h2 id="imessage">12. Alertes iPhone (iMessage)</h2>
-<p>Bouton <strong>Réglages</strong> (icône ⚙️) en haut du panneau : envoie automatiquement un <strong>iMessage</strong> vers votre iPhone quand un backup échoue ou est reporté — via l'app Messages déjà présente sur votre téléphone, sans app tierce. Renseignez votre numéro (<code>+33…</code>) ou votre identifiant Apple associé à iMessage dans <strong>Destinataire iMessage</strong>. Le Mac doit lui-même être connecté à Messages avec ce compte. Une option permet aussi d'être alerté en cas de <strong>succès</strong>, pas seulement d'échec.</p>
+<p>Bouton <strong>Réglages</strong> (icône ⚙️) en haut du panneau — dans les mots de l'app elle-même : « Le Mac t'envoie un <strong>iMessage</strong> » vers votre iPhone quand un backup échoue ou est reporté — via l'app Messages déjà présente sur votre téléphone, sans app tierce. Renseignez votre numéro (<code>+33…</code>) ou votre identifiant Apple associé à iMessage dans <strong>Destinataire iMessage</strong>. Le Mac doit lui-même être connecté à Messages avec ce compte. Une option permet aussi d'être alerté en cas de <strong>succès</strong>, pas seulement d'échec.</p>
 <div class="warn">Au premier envoi, macOS demande d'autoriser Backup Manager à piloter l'app Messages — une permission <strong>Automatisation</strong>, distincte de l'Accès complet au disque (section <a href="#permissions">7</a>). Cliquez <strong>Autoriser l'automatisation</strong> dans la fenêtre Réglages, puis <strong>Envoyer un test</strong> pour vérifier que tout fonctionne.</div>
 
 <h2 id="problemes">13. En cas de problème</h2>
