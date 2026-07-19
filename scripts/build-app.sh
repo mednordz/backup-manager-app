@@ -13,8 +13,16 @@ BUILD_DIR="$PROJECT_DIR/.build"
 APP_NAME="BackupManager"
 APP_DIR="$PROJECT_DIR/dist/$APP_NAME.app"
 BUNDLE_ID="com.mednor.backupmanager"
-VERSION="${BM_VERSION:-0.1.0}"
-BUILD_NUMBER="${BM_BUILD_NUMBER:-1}"
+# Défauts si BM_VERSION/BM_BUILD_NUMBER ne sont pas fournis : le dernier tag
+# git (pas un "0.1.0" figé) et un timestamp (comme release.sh) plutôt qu'un
+# "1" toujours plus vieux que n'importe quelle vraie release publiée -- sinon
+# Sparkle croit l'app installée périmée et propose sans fin de "mettre à jour"
+# vers la version qu'on vient littéralement de builder (vécu le 12/07/2026).
+GIT_TAG_VERSION="$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+VERSION="${BM_VERSION:-${GIT_TAG_VERSION:-0.1.0}}"
+BUILD_NUMBER="${BM_BUILD_NUMBER:-$(date +%s)}"
+[ -n "${BM_VERSION:-}" ] || echo "==> BM_VERSION non fourni -- utilise le dernier tag git : $VERSION"
+[ -n "${BM_BUILD_NUMBER:-}" ] || echo "==> BM_BUILD_NUMBER non fourni -- utilise un timestamp : $BUILD_NUMBER"
 FEED_URL="https://github.com/mednordz/backup-manager-app/releases/latest/download/appcast.xml"
 SPARKLE_PUBLIC_KEY="FmMS3RHcMSVyDbbY7YbaNL3ypevcrVc1mWvHC5U2liE="
 BMENGINE_SIGN_IDENTITY="Backup Manager Self-Signed"

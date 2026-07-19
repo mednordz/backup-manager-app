@@ -124,9 +124,9 @@ final class FlaskSupervisor {
         if !fm.isExecutableFile(atPath: pythonPath.path) {
             runSync("/usr/bin/python3", ["-m", "venv", venvDir.path])
         }
-        if !runSyncSucceeds(pythonPath.path, ["-c", "import flask"]) {
+        if !runSyncSucceeds(pythonPath.path, ["-c", "import flask, qrcode"]) {
             runSync(pythonPath.path, ["-m", "pip", "install", "-q", "--upgrade", "pip"])
-            runSync(pythonPath.path, ["-m", "pip", "install", "-q", "flask"])
+            runSync(pythonPath.path, ["-m", "pip", "install", "-q", "-r", appDir.appendingPathComponent("requirements.txt").path])
         }
         environmentVerified = true
     }

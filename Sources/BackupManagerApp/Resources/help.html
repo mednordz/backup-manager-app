@@ -89,6 +89,7 @@
   <a href="#imessage">12. Alertes iPhone (iMessage)</a>
   <a href="#problemes">13. En cas de problème</a>
   <a href="#desinstaller">14. Désinstaller complètement</a>
+  <a href="#mobile">15. Accès depuis ton iPhone</a>
 </nav>
 
 <h2 id="principe">1. Principe général</h2>
@@ -175,7 +176,7 @@
   <li><strong>Redémarrer l'application (recharge le code)</strong> (icône ↺) : redémarre le serveur local sans quitter — recharge le code sans perdre vos jobs configurés. Équivalent du <strong>Relancer le serveur</strong> du menu barre des menus (section <a href="#menubar">3</a>), mais accessible depuis le panneau lui-même — utile en particulier si vous consultez le panneau depuis un autre appareil du réseau local (voir ci-dessous), où le menu barre des menus n'existe pas.</li>
   <li><strong>Fermer l'application</strong> (icône rouge) : ferme complètement Backup Manager depuis le panneau — équivalent du <strong>Quitter</strong> du menu barre des menus.</li>
 </ul>
-<div class="tip">Le badge <strong>« local »</strong> à côté du titre (infobulle : <em>Accessible sur le réseau local</em>) indique que le panneau est aussi accessible depuis un autre appareil de votre réseau local (iPhone, autre Mac…) via <code>http://&lt;nom-ou-IP-de-ce-Mac&gt;:8787</code> — pas seulement depuis l'app native sur ce Mac. Si vous consultez le panneau ainsi et que Backup Manager est fermé sur ce Mac (ou son serveur redémarré), l'écran affiche <strong>« Application fermée »</strong> : ce n'est pas une erreur, il suffit de rouvrir l'app sur le Mac pour que le panneau redevienne accessible.</div>
+<div class="tip">Le badge <strong>« local »</strong> à côté du titre est cliquable : il ouvre les Réglages directement sur <strong>Accès depuis ton iPhone</strong> (section <a href="#mobile">15</a>) — le moyen prévu pour consulter le panneau depuis un autre appareil de votre réseau local. Si vous y accédez ainsi et que Backup Manager est fermé sur ce Mac (ou son serveur redémarré), l'écran affiche <strong>« Application fermée »</strong> : ce n'est pas une erreur, il suffit de rouvrir l'app sur le Mac pour que le panneau redevienne accessible.</div>
 <h3>Statut du dernier run</h3>
 <p>
   <span class="badge green">dernière : OK</span>
@@ -211,6 +212,7 @@
 <h2 id="corbeille">10. Corbeille &amp; restauration</h2>
 <p>Bouton <strong>Corbeille</strong> sur chaque job : parcourez les versions supprimées par date, et restaurez un fichier précis directement vers son emplacement d'origine dans la source.</p>
 <p>La rétention (nombre de jours de conservation) se règle par job via <strong>Éditer</strong>.</p>
+<p><strong>Instantanés à conserver</strong> (champ optionnel dans <strong>Éditer</strong>, désactivé par défaut) : à la différence de la corbeille — qui ne garde que ce qui a changé à chaque run — un instantané est une copie <strong>complète</strong> et datée du miroir à un instant donné, directement ouvrable dans le Finder sans rien reconstituer. Les fichiers inchangés d'un instantané à l'autre ne coûtent quasiment aucun espace disque supplémentaire (liens durs) ; seuls les fichiers réellement modifiés sont dupliqués. Un instantané est pris au maximum une fois par jour, après un backup réussi ; au-delà du nombre configuré, les plus anciens sont automatiquement supprimés. Disponible pour les destinations locales uniquement (pas encore pour SSH).</p>
 
 <h2 id="planification">11. Planification &amp; vérification automatique</h2>
 <p>Chaque job peut être <strong>planifié</strong> (heure fixe quotidienne) et/ou déclenché <strong>au branchement</strong> du disque de destination. Une <strong>vérification d'intégrité automatique</strong> (checksums complets) peut aussi tourner à intervalle régulier pour détecter une corruption silencieuse — ces réglages sont sur la carte de chaque job.</p>
@@ -236,6 +238,16 @@
 <div class="tip"><strong>Vos fichiers déjà sauvegardés (miroirs et corbeilles sur vos disques de destination) ne sont jamais touchés</strong> — la désinstallation ne supprime que la configuration de l'app sur ce Mac, jamais les données sur vos disques.</div>
 <p>Si l'app ne se lance plus du tout, le même script est aussi disponible en dehors de l'app : <strong>« Désinstaller BackupManager.command »</strong> à la racine du DMG d'installation (à retélécharger si besoin).</p>
 <div class="warn">Deux choses que macOS ne permet pas de faire par script, à retirer manuellement si besoin après coup : l'entrée dans Réglages Système → Général → Éléments de connexion (si « Ouvrir au démarrage » était activé), et les autorisations Accès complet au disque / Automatisation dans Réglages Système → Confidentialité et sécurité.</div>
+
+<h2 id="mobile">15. Accès depuis ton iPhone</h2>
+<p>Réglages (icône ⚙️, ou badge <strong>« local »</strong> à côté du titre) → <strong>Accès depuis ton iPhone</strong> : affiche un QR code et un lien pour piloter le panneau depuis un autre appareil de votre réseau Wi-Fi (le même que ce Mac — pas un réseau invité isolé).</p>
+<ul>
+  <li><strong>Scanner le QR</strong> avec l'appareil photo de l'iPhone ouvre directement le panneau dans Safari.</li>
+  <li><strong>Partager…</strong> envoie le lien via AirDrop, Messages ou Mail (partage natif macOS).</li>
+  <li><strong>Copier le lien</strong> le met dans le presse-papiers.</li>
+  <li><strong>Régénérer</strong> invalide immédiatement l'ancien lien (et le QR affiché) — utile après un invité sur le Wi-Fi, par exemple. Le lien contient un jeton d'accès propre à cet appareil ; sans lui, une connexion depuis un autre appareil du réseau est refusée.</li>
+</ul>
+<div class="tip">Depuis l'app native sur ce Mac, aucun jeton n'est nécessaire — cette protection ne s'applique qu'aux connexions venant d'un autre appareil du réseau.</div>
 
 <footer>Backup Manager — sauvegarde locale, sans cloud. Ce guide est embarqué dans l'app, disponible hors ligne.</footer>
 </div>
