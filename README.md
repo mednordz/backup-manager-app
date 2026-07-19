@@ -1,4 +1,8 @@
-![BackupManager](Sources/BackupManagerApp/Resources/Brand/github-banner.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Sources/BackupManagerApp/Resources/Brand/lockup-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="Sources/BackupManagerApp/Resources/Brand/lockup-light.png">
+  <img alt="BackupManager" src="Sources/BackupManagerApp/Resources/Brand/lockup-dark.png" width="480">
+</picture>
 
 # BackupManager (native shell)
 
