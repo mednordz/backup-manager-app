@@ -132,8 +132,18 @@ iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
 # Swift (AppDelegate/MenuBarStatus) ; le statut d'activité se signale par un
 # petit badge superposé, jamais en recolorant le symbole. Pas carrée
 # (1024x1179) : -Z préserve le ratio plutôt que déformer.
-sips -Z 18 "$BRAND_DIR/symbol.png" --out "$APP_DIR/Contents/Resources/StatusIcon.png" >/dev/null
-sips -Z 36 "$BRAND_DIR/symbol.png" --out "$APP_DIR/Contents/Resources/StatusIcon@2x.png" >/dev/null
+#
+# symbol-dark-bg.png (pas symbol.png) : la barre de menus est un fond SOMBRE,
+# or symbol.png a le haut en encre foncee (#0D1117), prevu pour une plaque
+# CLAIRE (AppIcon/avatar) -- utilise tel quel ici, le haut du symbole devenait
+# quasi invisible (encre sur fond sombre). symbol-dark-bg.png est une variante
+# derivee (meme forme, meme degrade menthe en bas, INCHANGE) avec le haut
+# recolore en #F4F7FB (le token "texte fort" officiel de la charte, jamais un
+# blanc pur) -- exactement la meme logique de contraste que lockup-dark.png
+# (texte clair sur fond sombre) applique au symbole seul. Constate en
+# conditions reelles le 19/07/2026 (captures d'ecran utilisateur).
+sips -Z 18 "$BRAND_DIR/symbol-dark-bg.png" --out "$APP_DIR/Contents/Resources/StatusIcon.png" >/dev/null
+sips -Z 36 "$BRAND_DIR/symbol-dark-bg.png" --out "$APP_DIR/Contents/Resources/StatusIcon@2x.png" >/dev/null
 
 echo "==> writing Info.plist"
 cat > "$APP_DIR/Contents/Info.plist" <<PLIST
