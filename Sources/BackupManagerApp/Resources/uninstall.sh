@@ -108,11 +108,27 @@ defaults delete "$BUNDLE_ID" >/dev/null 2>&1 || true
 rm -f "$HOME/Library/Preferences/$BUNDLE_ID.plist"
 
 echo "==> Suppression des journaux"
-rm -f "$HOME/Library/Logs/"backup-*.log "$HOME/Library/Logs/"backup-*.launchd.log >/dev/null 2>&1 || true
+# "backupmanager-*.log" (sans tiret) : ancienne architecture pre-fusion (menubar/ui
+# separes) -- constate reel le 19/07/2026 sur une installation qui datait d'avant
+# cette fusion, jamais nettoye par le seul motif "backup-*.log" ci-dessous.
+rm -f "$HOME/Library/Logs/"backup-*.log "$HOME/Library/Logs/"backup-*.launchd.log \
+      "$HOME/Library/Logs/"backupmanager-*.log >/dev/null 2>&1 || true
 rm -f /tmp/backup-manager.out >/dev/null 2>&1 || true
 
 echo "==> Suppression du cache"
 rm -rf "$HOME/Library/Caches/$BUNDLE_ID" "$HOME/Library/Caches/BackupManagerApp"
+
+# Donnees propres a la WebView (cache/cookies/stockage local du panneau,
+# ~/Library/Caches ci-dessus ne les couvre PAS -- constate reel le 19/07/2026 :
+# un ancien logo restait affiche dans le panneau apres une desinstallation
+# "complete" + reinstallation, a cause de ce cache WebKit jamais purge, meme
+# si le fichier servi par Flask etait deja le bon).
+rm -rf "$HOME/Library/WebKit/$BUNDLE_ID" "$HOME/Library/WebKit/BackupManagerApp"
+rm -rf "$HOME/Library/HTTPStorages/$BUNDLE_ID" "$HOME/Library/HTTPStorages/$BUNDLE_ID.binarycookies"
+
+echo "==> Suppression des rapports de plantage"
+rm -f "$HOME/Library/Application Support/CrashReporter/BackupManager_"*.plist \
+      "$HOME/Library/Application Support/CrashReporter/BackupManagerApp_"*.plist >/dev/null 2>&1 || true
 
 echo "==> Suppression de l'application"
 if [ -d "$APP_PATH" ]; then
