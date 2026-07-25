@@ -95,14 +95,32 @@ cleanup_orphan_tag() {
 trap cleanup_orphan_tag EXIT
 
 echo "==> publishing GitHub release"
+# Les fichiers .delta produits par generate_appcast ci-dessus n'étaient PAS
+# publiés : seuls le DMG, l'appcast et les notes l'étaient. L'appcast annonçait
+# donc des URL de mise à jour différentielle qui répondaient toutes 404 (constaté
+# en vrai sur les releases 0.2.34 à 0.2.36 : 15 deltas générés, aucun publié).
+# Sparkle retombe sur le DMG complet, donc rien ne cassait -- la mise à jour
+# différentielle, elle, n'a simplement jamais servi, alors que tout le travail
+# de génération était fait à chaque publication.
+# Tous les deltas vont sur la release LA PLUS RÉCENTE, pas sur celle de leur
+# version d'origine : les URL de l'appcast pointent vers /releases/latest/download/.
+# ${arr[@]+"${arr[@]}"} et non "${arr[@]}" -- même règle bash 3.2 que pour
+# TAG_FORCE plus haut, sous `set -u` un tableau vide avorterait le script.
+DELTAS=()
+for d in "$RELEASES_DIR"/*.delta; do
+  [ -e "$d" ] && DELTAS+=("$d")
+done
+echo "• ${#DELTAS[@]} fichier(s) delta à joindre"
 if gh release view "v$VERSION" >/dev/null 2>&1; then
-  gh release upload "v$VERSION" "$RELEASES_DIR/BackupManager-$VERSION.dmg" "$RELEASES_DIR/appcast.xml" "$NOTES_FILE" --clobber
+  gh release upload "v$VERSION" "$RELEASES_DIR/BackupManager-$VERSION.dmg" "$RELEASES_DIR/appcast.xml" "$NOTES_FILE" \
+    ${DELTAS[@]+"${DELTAS[@]}"} --clobber
   gh release edit "v$VERSION" --notes-file "$NOTES_FILE"
 else
   gh release create "v$VERSION" \
     "$RELEASES_DIR/BackupManager-$VERSION.dmg" \
     "$RELEASES_DIR/appcast.xml" \
     "$NOTES_FILE" \
+    ${DELTAS[@]+"${DELTAS[@]}"} \
     --title "BackupManager $VERSION" \
     --notes-file "$NOTES_FILE"
 fi
