@@ -27,27 +27,16 @@ enum MenuBarStatus {
             guard let state = job["state"] as? [String: Any] else { continue }
             if (state["running"] as? Bool) == true { running = true }
 
-            let lastResult = state["last_result"] as? [String: Any]
-            let status = lastResult?["status"] as? String
-            if status == "fail" { attention = true }
-
-            // Même heuristique que updatePermAlert() côté web (static/app.js),
-            // et il faut qu'elle le reste : un job « skipped » les deux disques
-            // montés ne trahit un blocage de permission QUE si le moteur a
-            // rapporté la source VIDE. Le web a affiné ce test, pas cette
-            // fonction, qui a donc continué d'allumer la pastille rouge
-            // « intervention requise » pour des reports parfaitement bénins --
-            // verrou d'une exécution concurrente, rsync introuvable, accroc
-            // passager d'un partage réseau -- pendant que le panneau, lui,
-            // n'affichait aucune alerte. Un partage réseau qui semble vide un
-            // instant est un accroc, jamais un problème de permission : d'où
-            // l'exclusion de source_network, comme côté web.
-            let sourceMounted = (state["source_mounted"] as? Bool) ?? false
-            let destMounted = (state["dest_mounted"] as? Bool) ?? false
-            let sourceNetwork = (state["source_network"] as? Bool) ?? false
-            let reason = (lastResult?["reason"] as? String) ?? ""
-            let looksEmpty = reason.range(of: "VIDE\\b", options: .regularExpression) != nil
-            if status == "skipped", sourceMounted, destMounted, !sourceNetwork, looksEmpty {
+            // Le verdict est calculé par le backend (attention_state) et lu tel
+            // quel, comme health/protection le sont déjà. Cette fonction en
+            // gardait sa PROPRE copie, restée en arrière quand le panneau web a
+            // affiné la sienne : la pastille rouge « intervention requise »
+            // s'allumait alors pour des reports bénins -- verrou d'une exécution
+            // concurrente, rsync introuvable, creux passager d'un partage réseau
+            // -- pendant que le panneau n'affichait rien. Deux implémentations
+            // de la même question finissent toujours par diverger ; il n'y en a
+            // plus qu'une.
+            if ((state["attention"] as? [String: Any])?["needed"] as? Bool) == true {
                 attention = true
             }
         }
