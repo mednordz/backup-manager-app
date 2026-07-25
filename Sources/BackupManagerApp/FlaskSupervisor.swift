@@ -427,6 +427,19 @@ final class FlaskSupervisor {
         healthTimer = timer
     }
 
+    /// Rafraîchissement PONCTUEL, déclenché par un événement (branchement ou
+    /// débranchement d'un disque), pas par un minuteur. Passe par le même
+    /// fetchJobs partagé et ne crée aucun second minuteur : la règle « une
+    /// seule requête à la fois contre le serveur Flask mono-thread » reste
+    /// tenue, puisque ces événements sont rares et non périodiques.
+    func refreshJobsNow() {
+        let gen = generation
+        fetchJobs { [weak self] jobs in
+            guard let self, gen == self.generation, let jobs else { return }
+            self.delegate?.flaskJobsUpdated(jobs)
+        }
+    }
+
     // MARK: - Probe
     //
     // A single shared entry point for all "is Flask up" checks (fetchJobs),

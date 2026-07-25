@@ -15,6 +15,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private var webView: WKWebView?
     private var restartMenuItem: NSMenuItem?
     private var loginItemMenuItem: NSMenuItem?
+    /// Éléments de menu réservés à l'affichage des jobs en cours (titre de
+    /// section + une ligne par job + séparateur). Ils sont retirés et
+    /// reconstruits à chaque instantané, toujours en tête du menu.
+    private var progressMenuItems: [NSMenuItem] = []
     private var hasLoadedPanelOnce = false
     /// True while the WKWebView is showing crashedHTML instead of the real
     /// panel — lets flaskStatusChanged(.running) tell a genuine recovery
@@ -38,6 +42,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         AppUpdater.shared.checkSilently()
         supervisor.delegate = self
         supervisor.start()
+        observeVolumeMounts()
+    }
+
+    /// Branchement/débranchement d'un disque : macOS nous le dit tout de
+    /// suite. Sans ça, il faut attendre le prochain cycle de scrutation du
+    /// backend pour que le panneau s'en aperçoive — jusqu'à plusieurs
+    /// secondes après avoir branché le disque, ce qui donne l'impression que
+    /// l'app n'a rien vu. Le rattrapage automatique d'un backup en retard en
+    /// profite aussi : il redevient quasi immédiat au branchement.
+    private func observeVolumeMounts() {
+        let center = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didMountNotification, NSWorkspace.didUnmountNotification] {
+            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.refreshAfterVolumeChange()
+            }
+        }
+    }
+
+    private func refreshAfterVolumeChange() {
+        // Petit délai : au moment où la notification arrive, le volume peut
+        // ne pas être ENCORE visible dans /sbin/mount côté backend — le
+        // rafraîchir dans la seconde donnerait l'état d'avant.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self = self else { return }
+            self.supervisor.refreshJobsNow()
+            // Le panneau web a son propre poll de 5 s : on le pousse à
+            // recharger sa liste tout de suite plutôt que de l'attendre.
+            self.webView?.evaluateJavaScript(
+                "window.loadJobs && window.loadJobs(); window.loadCoverage && window.loadCoverage();",
+                completionHandler: nil)
+        }
     }
 
     func bringPanelToFront() {
@@ -458,8 +493,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         guard let button = statusItem?.button, let base = NSImage(named: "StatusIcon") else { return }
         base.isTemplate = false
         let activity = MenuBarStatus.activity(fromJobs: jobs)
+        let running = MenuBarStatus.runningJobs(fromJobs: jobs)
         button.image = MenuBarStatus.icon(for: activity, base: base)
-        button.toolTip = MenuBarStatus.tooltip(for: activity)
+        button.toolTip = MenuBarStatus.tooltip(for: activity, running: running)
+        updateProgressMenuItems(running: running)
+    }
+
+    /// Progression en direct EN TÊTE du menu de la barre de menus, reconstruite
+    /// à chaque instantané /api/jobs déjà reçu — aucune requête HTTP de plus.
+    /// Les lignes sont non cliquables (elles informent, elles n'agissent pas)
+    /// et disparaissent entièrement dès qu'aucun job ne tourne, pour ne pas
+    /// laisser un menu encombré au repos.
+    private func updateProgressMenuItems(running: [MenuBarJob]) {
+        guard let menu = statusItem?.menu else { return }
+        for item in progressMenuItems where menu.items.contains(item) {
+            menu.removeItem(item)
+        }
+        progressMenuItems = []
+        guard !running.isEmpty else { return }
+
+        var fresh: [NSMenuItem] = []
+        let header = NSMenuItem(title: running.count > 1 ? "En cours (\(running.count))" : "En cours",
+                                action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        fresh.append(header)
+        for job in running {
+            let line = NSMenuItem(title: MenuBarStatus.progressLine(for: job), action: nil, keyEquivalent: "")
+            line.isEnabled = false
+            line.indentationLevel = 1
+            fresh.append(line)
+        }
+        fresh.append(NSMenuItem.separator())
+
+        for (offset, item) in fresh.enumerated() {
+            menu.insertItem(item, at: offset)
+        }
+        progressMenuItems = fresh
     }
 
     /// Reflects the same job-poll snapshot already used for notifications:

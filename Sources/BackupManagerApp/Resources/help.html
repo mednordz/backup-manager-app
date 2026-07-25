@@ -134,6 +134,7 @@
 <h2 id="menubar">3. L'icône dans la barre des menus</h2>
 <p>Une fois l'app ouverte, une icône Backup Manager apparaît dans la <strong>barre des menus</strong> (en haut de l'écran, à côté de l'heure) — c'est le point d'accès principal au quotidien, même quand le panneau est fermé. Cliquez dessus pour ouvrir un menu :</p>
 <ul>
+  <li><strong>En cours</strong> : tant qu'une sauvegarde tourne, le menu s'ouvre sur la liste des jobs en cours avec leur avancement (« Photos → B•03 — 62 % · 4:12 restantes »). Ces lignes ne sont pas cliquables, elles informent seulement, et disparaissent dès que tout est terminé. La même information apparaît en survolant simplement l'icône, sans ouvrir le menu.</li>
   <li><strong>Ouvrir le panneau</strong> : affiche la fenêtre principale.</li>
   <li><strong>Relancer le serveur</strong> : redémarre le moteur de sauvegarde en arrière-plan sans quitter l'app — le premier réflexe si quelque chose semble bloqué (voir <a href="#problemes">section 13</a>).</li>
   <li><strong>Tester la notification</strong> : envoie une notification macOS de test, pour vérifier qu'elles sont bien autorisées pour Backup Manager.</li>
@@ -170,6 +171,13 @@
 <h2 id="interface">6. Lire l'interface</h2>
 <h3>Vue de santé globale</h3>
 <p>En haut du panneau, <strong>« État de tes sauvegardes »</strong> résume tous vos jobs d'un coup d'œil : chacun apparaît comme <span class="badge green">sain</span>, <span class="badge amber">à surveiller</span> ou <span class="badge red">à corriger</span>, avec la raison en clair (« à jour · il y a 3 h », « en retard de 4 jours », « dernier backup en échec »…). Cliquer une carte fait défiler directement jusqu'au job concerné plus bas.</p>
+<h3>Dossiers non sauvegardés</h3>
+<p>Sous la vue de santé, un bandeau signale les dossiers usuels de votre compte (<strong>Bureau, Documents, Images, Films, Musique, Téléchargements</strong>) qu'<strong>aucun job ne sauvegarde</strong>. Il distingue trois situations : un dossier que personne ne prend en charge, un dossier couvert seulement par un job <strong>désactivé</strong> (le cas le plus sournois : le job existe et rassure, mais ne tourne plus), et un dossier sauvegardé <strong>en partie</strong> seulement, parce qu'un job n'en prend qu'un sous-dossier.</p>
+<p><strong>Créer un job</strong> ouvre directement le formulaire avec ce dossier comme source. <strong>Ignorer</strong> retire définitivement ce dossier du bandeau, pour assumer explicitement de ne pas le sauvegarder (un dossier Téléchargements que vous videz régulièrement, par exemple). Le bandeau disparaît entièrement quand il n'y a plus rien à signaler.</p>
+
+<h3>Disques absents</h3>
+<p>Quand plusieurs jobs attendent le <strong>même</strong> disque non branché, un seul bandeau le dit — « B•03 n'est pas branché — 3 jobs en attente » — au lieu de répéter le même avertissement sur chaque carte. Cliquer le nom d'un job fait défiler jusqu'à lui. Si un seul job est concerné, sa propre carte le dit déjà mieux, avec le contexte de son dernier run : aucun bandeau n'est ajouté.</p>
+
 <h3>Barre d'outils du panneau</h3>
 <p>En haut du panneau, en plus du bouton <strong>+ Nouveau job</strong> (section <a href="#premier-job">4</a>) et de <strong>⚡ Transferts rapides</strong> (section <a href="#rapide">9</a>) :</p>
 <ul>
@@ -191,6 +199,27 @@
 <p>Un job planifié dont un ou plusieurs passages quotidiens sont passés sans sauvegarde réussie (souvent : disque débranché à l'heure prévue) est signalé <strong>en retard</strong>. L'option <strong>« Rattraper les oublis »</strong> peut le relancer automatiquement dès que son disque revient (section <a href="#planification">11</a>).</p>
 <h3>Comparaison source ↔ miroir</h3>
 <p>Chaque job compare automatiquement sa source et son miroir dès que vous ouvrez le panneau — <strong>aucun clic requis</strong>. Le résultat est affiché en clair : <span class="badge green">✅ À jour — rien à sauvegarder</span>, ou bien <strong>« N éléments à sauvegarder »</strong> avec le détail (à ajouter / mettre à jour / supprimer), ou encore <strong>« Premier backup à faire »</strong> si le miroir n'existe pas encore. Un relevé <strong>Source</strong> / <strong>Miroir</strong> indique le nombre d'éléments et la taille de chaque côté. La comparaison est automatiquement recalculée après chaque backup, pour rester fidèle à la réalité.</p>
+<h3>Ligne « Confiance » : les preuves que le backup tient</h3>
+<p>Sous chaque job, une ligne rassemble les preuves concrètes que la sauvegarde est bien réelle et exploitable — pas seulement qu'elle s'est « terminée sans erreur » :</p>
+<ul>
+  <li>🕓 <strong>Fraîcheur</strong> : quand la dernière sauvegarde a réussi.</li>
+  <li>🔍 <strong>Intégrité</strong> : résultat de la dernière vérification par checksums, <strong>et sa tendance</strong>. C'est la tendance qui compte : une vérification isolée signalant deux différences ne veut rien dire (un fichier modifié entre le backup et la vérification suffit), alors qu'une progression du type « 0, 0, 2, 5, 9 » sur le même job est le motif typique d'un disque qui commence à corrompre en silence. Dans ce cas la ligne affiche <strong>« différences en hausse »</strong> avec la série complète. À l'inverse, « stable sur 6 vérifications » est une vraie bonne nouvelle.</li>
+  <li>⚡ <strong>Débit</strong> : vitesse de transfert du dernier backup, avec une mini-courbe des précédents. Un disque ou un câble USB qui se dégrade ralentit progressivement, souvent bien avant de tomber en panne. Un ralentissement marqué (moins de la moitié de l'habitude) est signalé en rouge. Les runs trop petits sont écartés de la courbe : copier trois fichiers en une seconde donne un débit aberrant qui masquerait la vraie tendance.</li>
+  <li>💾 <strong>Restaurabilité</strong> : résultat du dernier test de restauration (un échantillon de fichiers du miroir est relu et comparé à la source par empreinte).</li>
+  <li>🩺 <strong>Santé du disque</strong> : état S.M.A.R.T. du disque de destination. Beaucoup de boîtiers USB ne le transmettent pas — « non lu » n'est alors pas un mauvais signe.</li>
+</ul>
+
+<h3>Anomalies par rapport aux habitudes du job</h3>
+<p>Au-delà des seuils fixes, chaque job est comparé à <strong>son propre historique</strong>. Deux mesures sont croisées, et c'est le croisement qui porte l'information :</p>
+<ul>
+  <li><strong>Volume transféré</strong> nettement supérieur à l'habitude (au moins 3× la médiane, et au moins 1 Go d'écart). C'est le cas que les garde-fous en pourcentage ne voient pas : sur un gros miroir, 40 Go d'un coup ne franchissent jamais le seuil de 40 % de fichiers touchés.</li>
+  <li><strong>Durée</strong> nettement supérieure à l'habitude (au moins le double de la médiane).</li>
+</ul>
+<p>Les deux ensemble décrivent un <strong>gros import</strong> — banal. La durée seule, <em>à volume habituel</em>, est un signal bien plus intéressant : ce n'est pas la quantité de données qui a changé, donc c'est le lien ou le disque qui faiblit. Le message affiché explicite à chaque fois laquelle de ces situations a été détectée.</p>
+
+<h3>Changement de système de fichiers</h3>
+<p>Si le disque de destination change de format d'un backup à l'autre (mise à jour d'un pilote NTFS tiers, boîtier remplacé, disque reformaté), un message le signale : droits, attributs étendus et liens durs peuvent ne plus se comporter de la même façon (voir <a href="#disques">section 8</a>). Si tout se passe bien depuis, il n'y a rien à faire — le message disparaît de lui-même au bout d'un mois.</p>
+
 <h3>Protection contre les suppressions massives</h3>
 <p>Un backup en miroir retire du miroir ce qui a disparu de la source. Si un jour la source est <strong>mal montée</strong> (partage réseau dégradé, montage partiel), une grande partie du miroir pourrait ainsi partir à la corbeille sans que vous l'ayez voulu. Backup Manager s'en protège : avant d'écrire, il calcule combien de fichiers seraient supprimés, et si un backup en retirerait <strong>au moins 40 % (et au moins 100 fichiers)</strong>, il <strong>s'arrête sans rien toucher</strong> et affiche une alerte sur la carte du job.</p>
 <div class="warn">Face à cette alerte, deux choix : <strong>Vérifier la source</strong> (recompare, sans risque — le bon réflexe si la source semble incomplète) ou <strong>Supprimer quand même</strong> (à n'utiliser que si vous avez volontairement supprimé beaucoup de fichiers et que la source est bien complète). Dans tous les cas, les fichiers retirés vont dans la corbeille datée, récupérables. Le premier backup d'un job (miroir vide) n'est jamais concerné.</div>

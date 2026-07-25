@@ -8,6 +8,16 @@ enum MenuBarActivity {
     case attention   // échec ou blocage (montage/permission) sur au moins un job
 }
 
+/// Un job en cours, tel qu'affiché dans le menu de la barre de menus.
+/// `percent` est nil tant que le moteur n'a pas encore publié d'avancement
+/// (phase de scan initiale) : on affiche alors le nom seul plutôt qu'un
+/// « 0 % » trompeur, qui paraîtrait figé.
+struct MenuBarJob {
+    let name: String
+    let percent: Int?
+    let eta: String?
+}
+
 enum MenuBarStatus {
     static func activity(fromJobs jobs: [[String: Any]]) -> MenuBarActivity {
         var running = false
@@ -34,12 +44,46 @@ enum MenuBarStatus {
         return .idle
     }
 
+    /// Jobs en cours, avec leur avancement — extraits du MÊME instantané que
+    /// tout le reste. Le backend ne publie `state.progress` que pendant un
+    /// run, il n'y a donc rien de plus à filtrer ici.
+    static func runningJobs(fromJobs jobs: [[String: Any]]) -> [MenuBarJob] {
+        jobs.compactMap { job in
+            guard let state = job["state"] as? [String: Any],
+                  (state["running"] as? Bool) == true else { return nil }
+            let name = (job["name"] as? String) ?? (job["id"] as? String) ?? "Sauvegarde"
+            let progress = state["progress"] as? [String: Any]
+            var percent = progress?["percent"] as? Int
+            if percent == nil, let d = progress?["percent"] as? Double { percent = Int(d) }
+            // Le parseur écrit une ETA VIDE tant que rsync n'en fournit pas :
+            // la traiter comme absente, pas comme un texte à afficher.
+            let rawEta = progress?["eta"] as? String
+            let eta = (rawEta?.isEmpty ?? true) ? nil : rawEta
+            return MenuBarJob(name: name, percent: percent, eta: eta)
+        }
+    }
+
+    /// Libellé d'un job en cours, pour un élément de menu non cliquable.
+    static func progressLine(for job: MenuBarJob) -> String {
+        var line = job.name
+        if let p = job.percent { line += " — \(p) %" }
+        if let eta = job.eta { line += " · \(eta) restantes" }
+        return line
+    }
+
     static func tooltip(for activity: MenuBarActivity) -> String {
         switch activity {
         case .idle: return "Backup Manager"
         case .running: return "Backup Manager — sauvegarde en cours…"
         case .attention: return "Backup Manager — ⚠️ intervention requise (échec ou blocage)"
         }
+    }
+
+    /// Infobulle enrichie quand des jobs tournent : quel job, à quel
+    /// pourcentage — lisible au simple survol de l'icône, sans ouvrir le menu.
+    static func tooltip(for activity: MenuBarActivity, running: [MenuBarJob]) -> String {
+        guard activity == .running, !running.isEmpty else { return tooltip(for: activity) }
+        return "Backup Manager — " + running.map(progressLine(for:)).joined(separator: " · ")
     }
 
     /// StatusIcon est désormais le symbole officiel en couleurs réelles (voir
