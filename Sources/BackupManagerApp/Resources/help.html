@@ -319,11 +319,13 @@
 <p><strong>Le principe, à retenir avant tout le reste :</strong> relier deux Macs ne sert <em>jamais</em> à déclencher une sauvegarde à distance. Chaque Mac décide seul, à partir des disques qu'il voit de ses propres yeux. Le lien sert uniquement à <strong>savoir</strong> ce qui se passe chez l'autre, donc à l'afficher. Un Mac éteint, endormi ou injoignable ne peut rien empêcher.</p>
 
 <h3>Relier deux Macs</h3>
-<ol>
-  <li>Sur le premier Mac : Réglages (⚙️) → <strong>Mes Macs</strong> → <strong>Afficher un code d'appairage</strong>.</li>
-  <li>Sur le second : même écran, saisissez l'adresse du premier (par exemple <code>10.10.10.30:8787</code>) et le code à 6 chiffres, puis <strong>Relier</strong>.</li>
-</ol>
-<p>Le code est valable 5 minutes et ne sert qu'une fois. Chaque Mac reçoit ensuite son propre jeton, révocable individuellement : <strong>Retirer</strong> coupe le lien avec cette machine-là sans toucher aux autres, et le jeton de l'accès iPhone ne voyage jamais entre Macs.</p>
+<p>Ouvrez Réglages (⚙️) → <strong>Mes Macs</strong> sur les deux machines. Chacune s'annonce sur votre réseau, elles se voient donc apparaître toutes seules&nbsp;: cliquez <strong>Relier</strong> sur le nom de l'autre, puis <strong>Accepter</strong> sur celle-ci. Aucune adresse à saisir, aucun code.</p>
+<p>L'acceptation est demandée exprès. La découverte rend une machine <em>visible</em>, elle ne doit pas la rendre <em>accessible</em>&nbsp;: sans accord donné devant elle, n'importe quel appareil du réseau pourrait se relier et lire l'état de vos sauvegardes. Chaque Mac reçoit ensuite son propre jeton, révocable individuellement — <strong>Retirer</strong> coupe ce lien-là sans toucher aux autres, et le jeton de l'accès iPhone ne voyage jamais entre Macs.</p>
+<div class="tip">Si l'autre Mac n'apparaît pas — écran verrouillé, app fermée, réseau différent — le lien <strong>« Aucun Mac détecté&nbsp;? Utiliser un code… »</strong> rouvre l'ancienne méthode&nbsp;: <strong>Afficher un code d'appairage</strong> sur une machine, puis saisir sur l'autre son adresse et ce code à 6 chiffres — valable 5 minutes et utilisable une seule fois.</div>
+
+<h3>Pourquoi un Mac n'apparaît qu'à la maison</h3>
+<p>Un Mac ne s'annonce que sur <strong>votre</strong> réseau. Ailleurs — Wi-Fi d'un café, d'un bureau, d'un hôtel — il reste totalement silencieux&nbsp;: il ne se signale pas et ne cherche personne. C'est voulu pour un portable qui sort.</p>
+<p>Votre réseau est reconnu à l'<strong>adresse matérielle de votre box</strong>, qui lui est propre — un autre routeur utilisant la même adresse IP ne sera jamais confondu avec le vôtre. Cette empreinte est apprise une fois, en confirmant que le nom de domaine de la maison correspond bien à la connexion en cours&nbsp;; ensuite tout se décide hors ligne, en quelques millisecondes. En cas de doute, l'app considère qu'elle est <em>ailleurs</em>. Après un changement de box, Réglages → Mes Macs permet d'oublier le réseau mémorisé pour en apprendre un nouveau.</p>
 
 <h3>Ce que ça change à l'écran</h3>
 <ul>
