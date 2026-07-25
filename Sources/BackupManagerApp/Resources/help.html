@@ -342,6 +342,23 @@
 <p>Branchez les disques sur un Mac qui ne connaît pas encore ce job : un bandeau propose de le <strong>reprendre ici</strong>. C'est toujours une proposition, jamais automatique — un job décrit ce qui sera écrasé et par quoi, ce n'est pas à l'app de le décider parce qu'un disque est apparu. Le job repris arrive <strong>désactivé</strong> : rien ne partira tant que vous ne l'aurez pas planifié vous-même.</p>
 <div class="tip">Les deux Macs doivent être sur le même réseau local pour se voir. S'ils ne le sont pas, chacun continue de sauvegarder normalement dès qu'il a les disques — seul l'affichage « où sont-ils » devient indisponible, et l'app le signale en datant sa dernière information.</div>
 
+<h2 id="ejection">17. Éjecter un disque, et l'indexation Spotlight</h2>
+<p>Sur la carte d'une sauvegarde, <strong>Ouvrir / Éjecter ▾</strong> propose d'éjecter les disques externes qu'elle utilise, sans passer par le Finder.</p>
+<ul>
+  <li><strong>Jamais pendant une sauvegarde.</strong> Si un backup touche ce disque, l'éjection est refusée — et aucune option ne permet de passer outre. C'est le seul moment où débrancher peut réellement abîmer des données.</li>
+  <li><strong>Si macOS refuse, l'app dit pourquoi.</strong> Au lieu du « disque en cours d'utilisation » qui n'aide personne, elle nomme les applications qui retiennent le disque. Vous pouvez alors les fermer, ou forcer l'éjection en connaissance de cause — le forçage se demande, il ne se déclenche jamais tout seul.</li>
+</ul>
+
+<h3>Pourquoi un disque refuse souvent de s'éjecter</h3>
+<p>Neuf fois sur dix, c'est <strong>Spotlight</strong>&nbsp;: macOS indexe le disque en arrière-plan et y garde des fichiers ouverts. Ce n'est pas Backup Manager, qui n'en garde aucun.</p>
+<p>Or indexer un disque de sauvegarde n'a aucun intérêt&nbsp;: votre source est déjà indexée, et chercher dans le miroir ne ferait que dupliquer ces résultats. Pire, chaque fichier écrit par une sauvegarde est aussitôt réindexé, en concurrence avec la copie en cours. macOS applique le même raisonnement aux disques Time Machine, qu'il exclut d'office.</p>
+<p>Quand la destination est indexée, un message le signale avec un bouton <strong>Retirer de l'indexation</strong>. Deux choses à savoir&nbsp;:</p>
+<ul>
+  <li>L'exclusion prend effet <strong>au prochain branchement</strong> du disque — macOS ne lit ce réglage qu'au moment où il le monte.</li>
+  <li>Elle est inscrite <strong>sur le disque lui-même</strong>. Un SSD qui passe d'un Mac à l'autre reste donc exclu partout, sans rien reconfigurer. Et elle se défait à tout moment.</li>
+</ul>
+<div class="tip">L'exclusion n'est proposée que pour le disque de <strong>destination</strong>. Votre disque source reste indexé&nbsp;: vous voulez probablement pouvoir y faire des recherches.</div>
+
 <footer>Backup Manager — sauvegarde locale, sans cloud. Ce guide est embarqué dans l'app, disponible hors ligne.</footer>
 </div>
 </body>
