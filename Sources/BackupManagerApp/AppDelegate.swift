@@ -3,7 +3,11 @@ import WebKit
 
 /// See LocalNetwork.swift: a pf loopback-NAT side effect on this machine
 /// makes 127.0.0.1:8787 unreliable, so the panel loads over the LAN IP.
-let panelURL = URL(string: "http://\(LocalNetwork.currentLANAddress() ?? "127.0.0.1"):8787")!
+/// Computed (not a stored `let`) so a DHCP lease change mid-session is
+/// picked up on the next access, same as FlaskSupervisor.baseURL — a fixed
+/// `let` here previously meant only baseURL re-resolved, leaving the panel
+/// stuck on whatever IP was active at launch.
+var panelURL: URL { URL(string: "http://\(LocalNetwork.currentLANAddress() ?? "127.0.0.1"):8787")! }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKScriptMessageHandler, WKUIDelegate, FlaskSupervisorDelegate {
     private var statusItem: NSStatusItem?
@@ -12,6 +16,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     private var restartMenuItem: NSMenuItem?
     private var loginItemMenuItem: NSMenuItem?
     private var hasLoadedPanelOnce = false
+    /// True while the WKWebView is showing crashedHTML instead of the real
+    /// panel — lets flaskStatusChanged(.running) tell a genuine recovery
+    /// apart from an ordinary background refresh (see case .running below).
+    private var isShowingErrorScreen = false
+    /// Latest /api/jobs snapshot (same one already used for the Dock badge
+    /// and menu-bar icon) — kept around so quit() can check for a running
+    /// job without issuing its own HTTP request.
+    private var lastJobsSnapshot: [[String: Any]] = []
 
     private let supervisor = FlaskSupervisor()
     private let jobPoller = JobPoller()
@@ -146,8 +158,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     }
 
     @objc private func openLogsFolder() {
-        let logs = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs")
-        NSWorkspace.shared.open(logs)
+        // Le vrai log utile est le stdout/stderr du process Flask (voir
+        // FlaskSupervisor.logPath) -- ~/Library/Logs générique n'y menait pas.
+        let path = NSHomeDirectory() + "/Library/Logs/BackupManager/backup-manager.out"
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
     }
 
     @objc private func openIssueTracker() {
@@ -279,7 +293,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     }
 
     @objc private func quit() {
+        if hasRunningJob {
+            let alert = NSAlert()
+            alert.messageText = "Un backup est en cours"
+            alert.informativeText = "Quitter Backup Manager maintenant interrompra le backup en cours. Voulez-vous continuer ?"
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Annuler")
+            alert.addButton(withTitle: "Quitter quand même")
+            guard alert.runModal() == .alertSecondButtonReturn else { return }
+        }
         NSApp.terminate(nil)
+    }
+
+    /// Dérivé du dernier instantané /api/jobs (voir flaskJobsUpdated) --
+    /// utilisé pour avertir avant de quitter l'app ou d'installer une mise à
+    /// jour Sparkle pendant qu'un backup tourne. Non privé : AppUpdater s'en
+    /// sert via sa référence faible à ce delegate.
+    var hasRunningJob: Bool {
+        lastJobsSnapshot.contains { job in
+            ((job["state"] as? [String: Any])?["running"] as? Bool) ?? false
+        }
     }
 
     private func showPanel() {
@@ -385,8 +418,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             restartMenuItem?.isHidden = true
         case .running:
             restartMenuItem?.isHidden = true
-            if !hasLoadedPanelOnce {
+            if !hasLoadedPanelOnce || isShowingErrorScreen {
+                // Recovering from crashedHTML: reload() would just re-fetch
+                // the static error HTML string already loaded (no real URL
+                // behind it), leaving the UI stuck. A real navigation to
+                // panelURL is required to actually reach the panel again.
                 hasLoadedPanelOnce = true
+                isShowingErrorScreen = false
                 webView?.load(URLRequest(url: panelURL))
             } else {
                 webView?.reload()
@@ -399,11 +437,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
             NSApp.terminate(nil)
         case .crashed:
             restartMenuItem?.isHidden = false
+            isShowingErrorScreen = true
             webView?.loadHTMLString(Self.crashedHTML, baseURL: nil)
         }
     }
 
     func flaskJobsUpdated(_ jobs: [[String: Any]]) {
+        lastJobsSnapshot = jobs
         jobPoller.process(jobs: jobs)
         updateDockBadge(jobs: jobs)
         updateStatusIcon(jobs: jobs)

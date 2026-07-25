@@ -18,7 +18,7 @@ BUNDLE_ID="com.mednor.backupmanager"
 # "1" toujours plus vieux que n'importe quelle vraie release publiée -- sinon
 # Sparkle croit l'app installée périmée et propose sans fin de "mettre à jour"
 # vers la version qu'on vient littéralement de builder (vécu le 12/07/2026).
-GIT_TAG_VERSION="$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')"
+GIT_TAG_VERSION="$(git -C "$PROJECT_DIR" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
 VERSION="${BM_VERSION:-${GIT_TAG_VERSION:-0.1.0}}"
 BUILD_NUMBER="${BM_BUILD_NUMBER:-$(date +%s)}"
 [ -n "${BM_VERSION:-}" ] || echo "==> BM_VERSION non fourni -- utilise le dernier tag git : $VERSION"

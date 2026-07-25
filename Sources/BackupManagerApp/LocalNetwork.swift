@@ -32,11 +32,17 @@ enum LocalNetwork {
                                       &hostBuffer, socklen_t(hostBuffer.count),
                                       nil, 0, NI_NUMERICHOST)
             guard result == 0 else { continue }
-            candidates.append((name, String(cString: hostBuffer)))
+            let address = String(cString: hostBuffer)
+            // 169.254.0.0/16 is link-local (self-assigned, no DHCP lease) --
+            // never a usable LAN address, so it must never be a candidate.
+            guard !address.hasPrefix("169.254.") else { continue }
+            candidates.append((name, address))
         }
 
-        // Prefer en0 (typically Wi-Fi/primary) if present, otherwise the
-        // first non-loopback IPv4 address found.
-        return candidates.first(where: { $0.name == "en0" })?.address ?? candidates.first?.address
+        // First active, non-loopback, non-link-local IPv4 address found.
+        // No special-casing of a specific interface name (e.g. en0 as
+        // "Wi-Fi/primary") -- that assumption isn't reliable across
+        // machines/configurations (Ethernet dongles, VPNs, etc).
+        return candidates.first?.address
     }
 }

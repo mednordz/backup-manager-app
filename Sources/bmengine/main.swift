@@ -38,5 +38,21 @@ do {
     FileHandle.standardError.write(Data("bmengine: échec du lancement: \(error)\n".utf8))
     exit(126)
 }
+
+// Relaie SIGTERM/SIGINT à l'enfant : sans ça, arrêter bmengine (launchd,
+// `kill`) laissait bash+rsync orphelins continuer de tourner. Le handler
+// tourne sur une queue dédiée (pas .main) car ce lanceur est bloqué plus
+// bas dans un appel synchrone (waitUntilExit), sans run loop qui tourne
+// pour dépiler .main.
+signal(SIGTERM, SIG_IGN)
+signal(SIGINT, SIG_IGN)
+let signalQueue = DispatchQueue(label: "bmengine.signals")
+let sigterm = DispatchSource.makeSignalSource(signal: SIGTERM, queue: signalQueue)
+sigterm.setEventHandler { proc.terminate() }
+sigterm.resume()
+let sigint = DispatchSource.makeSignalSource(signal: SIGINT, queue: signalQueue)
+sigint.setEventHandler { proc.terminate() }
+sigint.resume()
+
 proc.waitUntilExit()
 exit(proc.terminationStatus)

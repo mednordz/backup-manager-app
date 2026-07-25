@@ -57,8 +57,36 @@ echo "==> signing + generating appcast.xml (avec notes de version embarquées)"
 
 echo "==> creating + pushing git tag v$VERSION"
 cd "$PROJECT_DIR"
-git tag -f "v$VERSION"
-git push -f origin "v$VERSION"
+HEAD_COMMIT="$(git rev-parse HEAD)"
+TAG_WAS_NEW=1
+if EXISTING_TAG_COMMIT="$(git rev-parse "v$VERSION^{commit}" 2>/dev/null)"; then
+  if [ "$EXISTING_TAG_COMMIT" != "$HEAD_COMMIT" ]; then
+    echo "ERREUR : le tag v$VERSION existe déjà et pointe vers un autre commit ($EXISTING_TAG_COMMIT), pas HEAD ($HEAD_COMMIT) — abandon pour ne pas écraser un tag déjà publié." >&2
+    exit 1
+  fi
+  echo "• tag v$VERSION existe déjà et pointe déjà vers HEAD — republication à l'identique"
+  TAG_WAS_NEW=0
+  TAG_FORCE=(-f)
+else
+  TAG_FORCE=()
+fi
+git tag "${TAG_FORCE[@]}" "v$VERSION"
+git push "${TAG_FORCE[@]}" origin "v$VERSION"
+
+# Si la publication de la release GitHub échoue APRÈS ce point, le tag public
+# resterait orphelin (poussé mais sans release associée). On le retire alors
+# pour repartir d'un état propre -- sauf si ce tag existait déjà avant cette
+# invocation (republication à l'identique, cf. TAG_WAS_NEW ci-dessus) : dans
+# ce cas il n'est pas "nouveau" et pourrait déjà avoir une release légitime.
+GH_RELEASE_OK=0
+cleanup_orphan_tag() {
+  if [ "$GH_RELEASE_OK" != "1" ] && [ "$TAG_WAS_NEW" = "1" ]; then
+    echo "==> échec après publication du tag -- retrait du tag orphelin v$VERSION (local + distant)" >&2
+    git tag -d "v$VERSION" >/dev/null 2>&1 || true
+    git push origin ":refs/tags/v$VERSION" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup_orphan_tag EXIT
 
 echo "==> publishing GitHub release"
 if gh release view "v$VERSION" >/dev/null 2>&1; then
@@ -72,5 +100,6 @@ else
     --title "BackupManager $VERSION" \
     --notes-file "$NOTES_FILE"
 fi
+GH_RELEASE_OK=1
 
 echo "==> done: https://github.com/mednordz/backup-manager-app/releases/tag/v$VERSION"

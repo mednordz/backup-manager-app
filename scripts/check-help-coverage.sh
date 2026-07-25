@@ -27,6 +27,15 @@ HELP_HTML="$PROJECT_DIR/Sources/BackupManagerApp/Resources/help.html"
 # Libellés visibles : texte de <button>, <h2>, <h3>, <label> (juste avant un
 # <input>/<small>), et title="…" — c'est-à-dire tout ce qu'un utilisateur
 # peut effectivement lire ou cliquer dans l'interface.
+#
+# LIMITE CONNUE : grep -oE travaille ligne par ligne, donc un libellé dont le
+# texte est réparti sur plusieurs lignes de code HTML (retour à la ligne
+# entre l'ouverture de balise et le texte, ou à l'intérieur du texte) n'est
+# pas détecté et ne remontera jamais dans ce rapport. Un pré-traitement qui
+# joindrait les lignes avant le grep corrigerait ça mais risquerait de créer
+# des faux positifs (fusion de contenus non liés) sur un script purement
+# informatif (jamais bloquant, cf. release.sh) — pas fait ici volontairement ;
+# la prudence prime sur la complétude pour cet outil.
 labels=$(
   grep -oE '>[A-ZÀ-Ü][a-zàâäéèêëîïôöùûüçA-ZÀ-Ü0-9 ,'"'"':%.…()/⚡-]{2,50}<' "$SRC_HTML" \
     | sed -E 's/^>//; s/<$//; s/ +$//' \

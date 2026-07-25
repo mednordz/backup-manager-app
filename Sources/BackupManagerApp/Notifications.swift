@@ -23,9 +23,12 @@ final class NotificationsManager: NSObject, UNUserNotificationCenterDelegate {
         let category = UNNotificationCategory(identifier: categoryId, actions: [openPanel, viewLog], intentIdentifiers: [], options: [])
         center.setNotificationCategories([category])
 
-        center.requestAuthorization(options: [.alert, .sound]) { _, error in
+        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error {
                 NSLog("NotificationsManager: authorization request failed: \(error)")
+            }
+            if !granted {
+                NSLog("NotificationsManager: user denied notification authorization — no native notifications will be shown")
             }
         }
     }

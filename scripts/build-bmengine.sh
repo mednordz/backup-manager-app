@@ -40,5 +40,5 @@ codesign --force --sign "$SIGN_IDENTITY" \
   --identifier "com.mednor.backupmanager.engine" "$DEST"
 
 echo "==> designated requirement :"
-codesign -d -r- "$DEST" 2>&1 | grep "designated"
+codesign -d -r- "$DEST" 2>&1 | grep "designated" || true
 echo "==> done: $DEST"

@@ -41,7 +41,17 @@ final class FlaskSupervisor {
 
     private var pythonPath: URL { appDir.appendingPathComponent(".venv/bin/python") }
     private var venvDir: URL { appDir.appendingPathComponent(".venv") }
-    private let logPath = "/tmp/backup-manager.out"
+    // Pas /tmp (world-writable -- risque de symlink race sur un Mac
+    // multi-utilisateurs, ce script/app est distribué publiquement) : un
+    // dossier propre à l'utilisateur, comme le reste des logs de l'app.
+    // Tenu synchronisé avec start-headless.sh et app.py (api_restart), qui
+    // écrivent au même chemin.
+    private let logPath: String = {
+        let dir = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent("Library/Logs/BackupManager")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("backup-manager.out").path
+    }()
 
     private var process: Process?
     private var environmentVerified = false
@@ -61,6 +71,15 @@ final class FlaskSupervisor {
 
     func markIntentionalQuit() {
         intentionalQuit = true
+        // Safety net: if no process termination follows within a reasonable
+        // window (e.g. the quit request never actually reached app.py), a
+        // later unrelated crash could otherwise be silently misattributed
+        // to this intentional quit and skip the crash-recovery path.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            guard let self, self.intentionalQuit else { return }
+            NSLog("FlaskSupervisor: markIntentionalQuit() timed out with no process exit — resetting flag")
+            self.intentionalQuit = false
+        }
     }
 
     /// Termine le process app.py, si un est en cours. Appelé depuis
@@ -77,7 +96,20 @@ final class FlaskSupervisor {
         p.terminationHandler = nil
         if p.isRunning {
             p.terminate()
-            p.waitUntilExit()
+            // Bounded wait: p.waitUntilExit() alone can block the calling
+            // thread (applicationWillTerminate, on the main thread)
+            // indefinitely if app.py ignores SIGTERM or is wedged. Wait on a
+            // background queue instead, with a 5s timeout, and escalate to
+            // SIGKILL if the process hasn't exited by then.
+            let sema = DispatchSemaphore(value: 0)
+            DispatchQueue.global(qos: .utility).async {
+                p.waitUntilExit()
+                sema.signal()
+            }
+            if sema.wait(timeout: .now() + 5) == .timedOut {
+                NSLog("FlaskSupervisor: app.py still running 5s after SIGTERM, sending SIGKILL")
+                kill(p.processIdentifier, SIGKILL)
+            }
         }
         process = nil
     }
@@ -93,22 +125,38 @@ final class FlaskSupervisor {
     func start() {
         let gen = generation
         delegate?.flaskStatusChanged(.starting)
-        probe { [weak self] alive in
-            guard let self, gen == self.generation else { return }
-            if alive {
-                self.delegate?.flaskStatusChanged(.running)
-                self.beginHealthMonitor(generation: gen)
-            } else {
-                // ensureEnvironment() shells out synchronously (venv creation,
-                // pip install) — on a first-ever launch this can take real
-                // seconds over the network, and running it on the main thread
-                // would beachball the whole app for that whole window.
-                DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                    guard let self else { return }
-                    self.ensureEnvironment()
-                    DispatchQueue.main.async {
-                        guard gen == self.generation else { return }
-                        self.attemptLaunch(generation: gen)
+        // bootstrapBackendIfNeeded() must run unconditionally, before the
+        // probe and regardless of its result — previously it only ran when
+        // Flask was NOT already alive, so a machine where Flask survived
+        // app relaunch (or was already running for any other reason) never
+        // got resynced with the bundled backend, permanently missing any
+        // fix shipped in a later app update. Its own guard against
+        // overwriting a `.git` dev checkout lives inside the function
+        // itself, so calling it more often doesn't weaken that protection.
+        // File I/O -> off the main thread, same reasoning as ensureEnvironment() below.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            self.bootstrapBackendIfNeeded()
+            DispatchQueue.main.async {
+                guard gen == self.generation else { return }
+                self.probe { [weak self] alive in
+                    guard let self, gen == self.generation else { return }
+                    if alive {
+                        self.delegate?.flaskStatusChanged(.running)
+                        self.beginHealthMonitor(generation: gen)
+                    } else {
+                        // ensureEnvironment() shells out synchronously (venv creation,
+                        // pip install) — on a first-ever launch this can take real
+                        // seconds over the network, and running it on the main thread
+                        // would beachball the whole app for that whole window.
+                        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                            guard let self else { return }
+                            self.ensureEnvironment()
+                            DispatchQueue.main.async {
+                                guard gen == self.generation else { return }
+                                self.attemptLaunch(generation: gen)
+                            }
+                        }
                     }
                 }
             }
@@ -119,7 +167,9 @@ final class FlaskSupervisor {
 
     private func ensureEnvironment() {
         guard !environmentVerified else { return }
-        bootstrapBackendIfNeeded()
+        // bootstrapBackendIfNeeded() is no longer called here: start() now
+        // calls it unconditionally before this function ever runs (see
+        // start() above), so calling it again here would just be redundant.
         let fm = FileManager.default
         if !fm.isExecutableFile(atPath: pythonPath.path) {
             runSync("/usr/bin/python3", ["-m", "venv", venvDir.path])
@@ -176,10 +226,20 @@ final class FlaskSupervisor {
                 let src = bundled.appendingPathComponent(name)
                 guard fm.fileExists(atPath: src.path) else { continue }
                 let dest = appDir.appendingPathComponent(name)
+                // Atomic swap instead of remove-then-copy: a crash/kill
+                // mid-copy previously could leave `dest` missing entirely
+                // (removed but not yet replaced) instead of either the old
+                // or the new version. Stage into a temp path in the SAME
+                // directory as `dest` (required for replaceItemAt to stay
+                // on the same volume) and swap it in.
+                let tmpDest = dest.deletingLastPathComponent()
+                    .appendingPathComponent(".\(name)-tmp-\(UUID().uuidString)")
+                try fm.copyItem(at: src, to: tmpDest)
                 if fm.fileExists(atPath: dest.path) {
-                    try fm.removeItem(at: dest)
+                    _ = try fm.replaceItemAt(dest, withItemAt: tmpDest)
+                } else {
+                    try fm.moveItem(at: tmpDest, to: dest)
                 }
-                try fm.copyItem(at: src, to: dest)
             }
             NSLog("FlaskSupervisor: \(firstInstall ? "bootstrapped" : "synced") ~/backup-manager from bundled resources")
         } catch {
@@ -269,8 +329,16 @@ final class FlaskSupervisor {
         guard gen == generation else { return }
         guard attempt < 30 else {
             // Process is still alive (no termination fired) but never
-            // answered — treat as a stuck launch and let the health
-            // monitor / termination handler take it from here.
+            // answered. Previously this just returned silently, relying on
+            // a health monitor that was never started (beginHealthMonitor()
+            // only runs after a successful probe) — the UI stayed stuck on
+            // "Démarrage du serveur…" forever. Surface the same .crashed
+            // state used elsewhere (attemptLaunch's failure-count gate) so
+            // AppDelegate shows the recovery screen and "Relancer le
+            // serveur" becomes available.
+            NSLog("FlaskSupervisor: app.py did not respond after \(attempt) attempts — giving up and surfacing failure")
+            consecutiveFailures = maxConsecutiveFailures
+            delegate?.flaskStatusChanged(.crashed)
             return
         }
         probe { [weak self] alive in

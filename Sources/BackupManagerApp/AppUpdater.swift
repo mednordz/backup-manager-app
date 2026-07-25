@@ -1,3 +1,4 @@
+import AppKit
 import Sparkle
 
 /// Thin wrapper around Sparkle's standard updater controller. The feed URL
@@ -41,6 +42,15 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     /// pour la remise à zéro). L'app se ferme et relance automatiquement une
     /// fois l'installation terminée.
     func installPendingUpdate() {
+        if appDelegate?.hasRunningJob == true {
+            let alert = NSAlert()
+            alert.messageText = "Un backup est en cours"
+            alert.informativeText = "Installer la mise à jour maintenant ? Le backup en cours sera interrompu."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "Annuler")
+            alert.addButton(withTitle: "Installer quand même")
+            guard alert.runModal() == .alertSecondButtonReturn else { return }
+        }
         controller.updater.automaticallyDownloadsUpdates = true
         controller.checkForUpdates(nil)
     }

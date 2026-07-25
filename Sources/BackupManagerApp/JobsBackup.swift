@@ -92,7 +92,10 @@ enum JobsBackup {
             for file in files {
                 guard let data = try? Data(contentsOf: file),
                       let job = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let jid = job["id"] as? String else { continue }
+                      let jid = job["id"] as? String else {
+                    failed.append("\(file.lastPathComponent) (fichier invalide ou sans identifiant)")
+                    continue
+                }
                 do {
                     let created = try await restoreOneJob(jid: jid, job: job)
                     if created { restored.append(jid) } else { skipped.append(jid) }
@@ -153,7 +156,8 @@ enum JobsBackup {
 
     @discardableResult
     private static func apiCall(path: String, method: String, body: [String: Any]) async throws -> Data {
-        var request = URLRequest(url: URL(string: "http://\(panelURL.host ?? "127.0.0.1"):\(panelURL.port ?? 8787)\(path)")!)
+        let base = panelURL   // snapshot once: panelURL is now computed (re-resolves the LAN IP each access)
+        var request = URLRequest(url: URL(string: "http://\(base.host ?? "127.0.0.1"):\(base.port ?? 8787)\(path)")!)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
