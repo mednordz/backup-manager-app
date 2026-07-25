@@ -547,7 +547,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     /// imminente. Le backend retire l'agent du seul job concerné et le réarme
     /// après l'heure manquée — la planification n'est jamais modifiée.
     func skipNextRun(jobId: String) {
-        var request = URLRequest(url: URL(string: "http://127.0.0.1:8787/api/jobs/\(jobId)/skip-next")!)
+        // panelURL, et non 127.0.0.1 en dur : voir LocalNetwork.swift -- le
+        // loopback peut être inutilisable sur cette machine (effet de bord pf),
+        // raison pour laquelle TOUT le reste de l'app passe par l'IP LAN. Ces
+        // deux appels-ci (ajoutés en même temps que la pause et le saut
+        // d'exécution) étaient les seuls à y échapper : ils auraient échoué en
+        // silence, sans rien d'autre qu'une ligne de log, pendant que le
+        // panneau et le superviseur continuaient de fonctionner normalement.
+        var request = URLRequest(url: panelURL.appendingPathComponent("api/jobs/\(jobId)/skip-next"))
         request.httpMethod = "POST"
         request.timeoutInterval = 5
         URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
@@ -600,7 +607,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     }
 
     private func sendPause(minutes: Int) {
-        var request = URLRequest(url: URL(string: "http://127.0.0.1:8787/api/pause")!)
+        // panelURL plutôt que 127.0.0.1 en dur -- même raison que skipNextRun().
+        var request = URLRequest(url: panelURL.appendingPathComponent("api/pause"))
         request.httpMethod = "POST"
         request.timeoutInterval = 5
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -31,12 +31,25 @@ enum MenuBarStatus {
             let status = lastResult?["status"] as? String
             if status == "fail" { attention = true }
 
-            // Même heuristique que updatePermAlert() côté web (static/app.js) :
-            // un job monté des deux côtés mais "skipped" trahit un blocage de
-            // permission, pas une simple absence de disque externe.
+            // Même heuristique que updatePermAlert() côté web (static/app.js),
+            // et il faut qu'elle le reste : un job « skipped » les deux disques
+            // montés ne trahit un blocage de permission QUE si le moteur a
+            // rapporté la source VIDE. Le web a affiné ce test, pas cette
+            // fonction, qui a donc continué d'allumer la pastille rouge
+            // « intervention requise » pour des reports parfaitement bénins --
+            // verrou d'une exécution concurrente, rsync introuvable, accroc
+            // passager d'un partage réseau -- pendant que le panneau, lui,
+            // n'affichait aucune alerte. Un partage réseau qui semble vide un
+            // instant est un accroc, jamais un problème de permission : d'où
+            // l'exclusion de source_network, comme côté web.
             let sourceMounted = (state["source_mounted"] as? Bool) ?? false
             let destMounted = (state["dest_mounted"] as? Bool) ?? false
-            if status == "skipped", sourceMounted, destMounted { attention = true }
+            let sourceNetwork = (state["source_network"] as? Bool) ?? false
+            let reason = (lastResult?["reason"] as? String) ?? ""
+            let looksEmpty = reason.range(of: "VIDE\\b", options: .regularExpression) != nil
+            if status == "skipped", sourceMounted, destMounted, !sourceNetwork, looksEmpty {
+                attention = true
+            }
         }
 
         if attention { return .attention }
