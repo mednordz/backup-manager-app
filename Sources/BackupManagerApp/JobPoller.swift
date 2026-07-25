@@ -10,6 +10,10 @@ import Foundation
 final class JobPoller {
     private var previous: [String: (running: Bool, status: String)] = [:]
     private var hasBaseline = false
+    /// Dernière réussite déjà annoncée comme venant d'une AUTRE machine, par
+    /// job. Sert à ne prévenir qu'une fois par sauvegarde distante, pas à
+    /// chaque instantané reçu (toutes les 5 s).
+    private var announcedElsewhere: [String: String] = [:]
 
     func process(jobs: [[String: Any]]) {
         var current: [String: (running: Bool, status: String)] = [:]
@@ -27,6 +31,29 @@ final class JobPoller {
                 let derived = job["derived"] as? [String: Any]
                 let logPath = derived?["log"] as? String
                 notifyFinished(jobName: name, status: status, logPath: logPath)
+            }
+
+            // Sauvegarde faite sur un AUTRE Mac du groupe : sans ça,
+            // l'utilisateur qui déplace ses SSD ne saurait jamais si la
+            // sauvegarde a bien eu lieu là-bas -- il verrait seulement que ce
+            // Mac-ci n'a rien fait. Le backend a déjà déterminé où et quand
+            // (job_health), on ne fait que relayer.
+            //
+            // La toute première observation ne déclenche RIEN : au lancement de
+            // l'app, toutes les sauvegardes distantes passées paraîtraient
+            // nouvelles et partiraient en rafale. On enregistre, puis on
+            // n'annonce que les changements.
+            if let health = state["health"] as? [String: Any],
+               let onMachine = health["last_success_on"] as? String,
+               let at = health["last_success"] as? String {
+                if let known = announcedElsewhere[id], known != at {
+                    let name = (job["name"] as? String) ?? id
+                    NotificationsManager.shared.postJobFinished(
+                        title: name,
+                        body: "Sauvegardé sur \(onMachine).",
+                        logPath: nil)
+                }
+                announcedElsewhere[id] = at
             }
         }
 
