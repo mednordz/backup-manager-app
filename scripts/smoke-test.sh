@@ -105,8 +105,16 @@ else
   ALT_PORT=8799
   ALT_HOME="$FLASK_SCRATCH/home"
   mkdir -p "$ALT_HOME"
-  ( cd "$FLASK_SCRATCH" && HOME="$ALT_HOME" BACKUP_MANAGER_PORT="$ALT_PORT" "$VENV_PYTHON" app.py >"$FLASK_SCRATCH/flask.log" 2>&1 & echo $! > "$FLASK_SCRATCH/pid" )
-  FLASK_PID="$(cat "$FLASK_SCRATCH/pid")"
+  # PAS de `( cd X && cmd & )` ici : le `&` porte sur TOUTE la liste
+  # `cd && cmd`, donc $! renvoie le PID du sous-shell intermédiaire, pas celui
+  # de Python. Le `kill` plus bas tuait alors le sous-shell et laissait Python
+  # vivant, réattaché à launchd (PPID 1) -- un backend Flask orphelin de plus à
+  # CHAQUE publication, constaté en vrai sur le Mac mini. app.py résout ses
+  # chemins depuis __file__ et se moque du répertoire courant : on lui passe
+  # son chemin complet et on se passe entièrement du `cd` et du sous-shell.
+  HOME="$ALT_HOME" BACKUP_MANAGER_PORT="$ALT_PORT" "$VENV_PYTHON" "$FLASK_SCRATCH/app.py" \
+    >"$FLASK_SCRATCH/flask.log" 2>&1 &
+  FLASK_PID=$!
   UP=0
   for _ in $(seq 1 20); do
     HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$ALT_PORT/api/jobs" 2>/dev/null || true)"
