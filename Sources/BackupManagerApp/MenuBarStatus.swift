@@ -63,6 +63,18 @@ enum MenuBarStatus {
         }
     }
 
+    /// Pause globale telle que le backend la publie sur chaque job
+    /// (state.pause) — même instantané que le reste, aucune requête de plus.
+    /// Retourne l'heure de reprise, ou nil si aucune pause n'est active.
+    static func pausedUntil(fromJobs jobs: [[String: Any]]) -> String? {
+        for job in jobs {
+            guard let pause = (job["state"] as? [String: Any])?["pause"] as? [String: Any],
+                  (pause["active"] as? Bool) == true else { continue }
+            return (pause["until_human"] as? String) ?? "?"
+        }
+        return nil
+    }
+
     /// Libellé d'un job en cours, pour un élément de menu non cliquable.
     static func progressLine(for job: MenuBarJob) -> String {
         var line = job.name

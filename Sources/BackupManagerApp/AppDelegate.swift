@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     /// section + une ligne par job + séparateur). Ils sont retirés et
     /// reconstruits à chaque instantané, toujours en tête du menu.
     private var progressMenuItems: [NSMenuItem] = []
+    private var pauseMenuItem: NSMenuItem?
     private var hasLoadedPanelOnce = false
     /// True while the WKWebView is showing crashedHTML instead of the real
     /// panel — lets flaskStatusChanged(.running) tell a genuine recovery
@@ -262,6 +263,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Ouvrir le panneau", action: #selector(openPanel), keyEquivalent: "o"))
+
+        // Pause globale — le cas d'usage (« je pars, coupe tout ») se présente
+        // justement quand le panneau est fermé, d'où sa place ici. Le titre et
+        // le sous-menu sont réécrits à chaque instantané par updatePauseMenu().
+        let pauseItem = NSMenuItem(title: "Tout mettre en pause", action: nil, keyEquivalent: "")
+        menu.addItem(pauseItem)
+        pauseMenuItem = pauseItem
         let restartItem = NSMenuItem(title: "Relancer le serveur", action: #selector(restartServer), keyEquivalent: "r")
         restartItem.isHidden = true
         menu.addItem(restartItem)
@@ -497,6 +505,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         button.image = MenuBarStatus.icon(for: activity, base: base)
         button.toolTip = MenuBarStatus.tooltip(for: activity, running: running)
         updateProgressMenuItems(running: running)
+        updatePauseMenu(pausedUntil: MenuBarStatus.pausedUntil(fromJobs: jobs))
+    }
+
+    /// Reflète l'état de pause : un sous-menu de durées quand tout tourne, une
+    /// reprise immédiate quand la pause est active. Le titre dit toujours
+    /// l'heure de reprise — une pause dont on a oublié l'échéance ferait croire
+    /// que les sauvegardes tournent.
+    private func updatePauseMenu(pausedUntil: String?) {
+        guard let item = pauseMenuItem else { return }
+        if let until = pausedUntil {
+            item.title = "En pause jusqu'à \(until) — reprendre maintenant"
+            item.submenu = nil
+            item.action = #selector(resumeAll)
+            item.target = self
+        } else {
+            item.title = "Tout mettre en pause"
+            item.action = nil
+            item.target = nil
+            let sub = NSMenu()
+            for (minutes, label) in [(60, "1 heure"), (240, "4 heures"), (1440, "24 heures")] {
+                let entry = NSMenuItem(title: label, action: #selector(pauseAll(_:)), keyEquivalent: "")
+                entry.target = self
+                entry.tag = minutes
+                sub.addItem(entry)
+            }
+            item.submenu = sub
+        }
+    }
+
+    @objc private func pauseAll(_ sender: NSMenuItem) { sendPause(minutes: sender.tag) }
+    @objc private func resumeAll() { sendPause(minutes: 0) }
+
+    private func sendPause(minutes: Int) {
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:8787/api/pause")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 5
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["minutes": minutes])
+        URLSession.shared.dataTask(with: request) { [weak self] _, _, error in
+            DispatchQueue.main.async {
+                if let error {
+                    NSLog("Pause globale : échec (\(error.localizedDescription))")
+                    return
+                }
+                // Rafraîchit tout de suite plutôt que d'attendre le prochain
+                // cycle : le menu doit refléter l'action qu'on vient de faire.
+                self?.supervisor.refreshJobsNow()
+            }
+        }.resume()
     }
 
     /// Progression en direct EN TÊTE du menu de la barre de menus, reconstruite
