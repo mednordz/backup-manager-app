@@ -20,6 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
     /// reconstruits à chaque instantané, toujours en tête du menu.
     private var progressMenuItems: [NSMenuItem] = []
     private var pauseMenuItem: NSMenuItem?
+    /// Occurrences déjà annoncées (« jobId@epoch »), pour n'avertir qu'une
+    /// fois par exécution planifiée et non à chaque cycle de scrutation.
+    private var notifiedUpcoming: Set<String> = []
+    /// Combien de minutes à l'avance on prévient.
+    private static let upcomingLeadMinutes = 10
     private var hasLoadedPanelOnce = false
     /// True while the WKWebView is showing crashedHTML instead of the real
     /// panel — lets flaskStatusChanged(.running) tell a genuine recovery
@@ -490,6 +495,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
         jobPoller.process(jobs: jobs)
         updateDockBadge(jobs: jobs)
         updateStatusIcon(jobs: jobs)
+        checkUpcomingBackups(jobs: jobs)
     }
 
     /// Fait vivre l'icône de la barre de menu : symbole officiel en couleurs
@@ -536,6 +542,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKSc
 
     @objc private func pauseAll(_ sender: NSMenuItem) { sendPause(minutes: sender.tag) }
     @objc private func resumeAll() { sendPause(minutes: 0) }
+
+    /// Suite au bouton « Sauter cette fois » d'une notification de sauvegarde
+    /// imminente. Le backend retire l'agent du seul job concerné et le réarme
+    /// après l'heure manquée — la planification n'est jamais modifiée.
+    func skipNextRun(jobId: String) {
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:8787/api/jobs/\(jobId)/skip-next")!)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 5
+        URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
+            DispatchQueue.main.async {
+                let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if error != nil || !(200..<300).contains(code) {
+                    NSLog("Saut de la prochaine exécution de \(jobId) : échec (HTTP \(code))")
+                    return
+                }
+                self?.supervisor.refreshJobsNow()
+            }
+        }.resume()
+    }
+
+    /// Notification « sauvegarde imminente » (idée 18) — dérivée du même
+    /// instantané /api/jobs que tout le reste. Une seule par job et par
+    /// occurrence : `notifiedUpcoming` retient la date+heure déjà annoncée,
+    /// sinon la notification repartirait à chaque cycle de 5 s pendant toute
+    /// la fenêtre d'annonce.
+    private func checkUpcomingBackups(jobs: [[String: Any]]) {
+        guard MenuBarStatus.pausedUntil(fromJobs: jobs) == nil else { return }
+        let now = Date()
+        for job in jobs {
+            guard let id = job["id"] as? String,
+                  let state = job["state"] as? [String: Any],
+                  (state["scheduled"] as? Bool) == true,
+                  (state["running"] as? Bool) != true,
+                  let schedule = job["schedule"] as? [String: Any],
+                  let hour = schedule["hour"] as? Int,
+                  let minute = schedule["minute"] as? Int else { continue }
+
+            var comps = Calendar.current.dateComponents([.year, .month, .day], from: now)
+            comps.hour = hour; comps.minute = minute; comps.second = 0
+            guard var fire = Calendar.current.date(from: comps) else { continue }
+            if fire <= now { fire = fire.addingTimeInterval(86400) }
+
+            let minutesAway = Int(fire.timeIntervalSince(now) / 60)
+            guard minutesAway > 0, minutesAway <= Self.upcomingLeadMinutes else { continue }
+
+            let key = "\(id)@\(Int(fire.timeIntervalSince1970))"
+            guard !notifiedUpcoming.contains(key) else { continue }
+            notifiedUpcoming.insert(key)
+            // Borne mémoire : l'ensemble ne doit pas grossir indéfiniment sur
+            // une app qui tourne des semaines.
+            if notifiedUpcoming.count > 200 { notifiedUpcoming.removeAll() }
+            let name = (job["name"] as? String) ?? id
+            NotificationsManager.shared.postBackupUpcoming(jobId: id, jobName: name,
+                                                           minutes: minutesAway)
+        }
+    }
 
     private func sendPause(minutes: Int) {
         var request = URLRequest(url: URL(string: "http://127.0.0.1:8787/api/pause")!)

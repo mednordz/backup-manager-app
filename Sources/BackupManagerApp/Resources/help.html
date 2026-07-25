@@ -210,6 +210,18 @@
   <li>🩺 <strong>Santé du disque</strong> : état S.M.A.R.T. du disque de destination. Beaucoup de boîtiers USB ne le transmettent pas — « non lu » n'est alors pas un mauvais signe.</li>
 </ul>
 
+<h3>Score de protection (A–F)</h3>
+<p>En haut à droite de chaque job, une note résume tout ce qui précède : fraîcheur, intégrité et sa tendance, restaurabilité prouvée, santé du disque, saturation prévue. Survolez-la pour connaître le détail de ce qui la fait monter ou descendre.</p>
+<p>Le point important : <strong>cette note refuse de se prononcer quand elle manque d'éléments</strong>. Un job jamais vérifié et jamais testé en restauration affiche <strong>« ? — non évaluée »</strong>, pas un « A ». Un « A » décerné sur des preuves absentes rassurerait à tort, ce qui est exactement l'inverse du but. Un disque de destination signalé défaillant par le S.M.A.R.T. donne toujours un <strong>F</strong>, quels que soient les autres indicateurs : la sauvegarde repose sur un support qui s'annonce mourant.</p>
+<p>La régularité de la planification (ci-dessous) n'entre volontairement <em>pas</em> dans cette note : un disque qu'on ne branche que le week-end la ferait chuter sans que rien n'aille mal.</p>
+
+<h3>Régularité et corbeille</h3>
+<p>La ligne d'informations de chaque job indique <strong>« Servi N/M fois prévues »</strong> sur les 90 derniers jours. C'est un <em>indicateur</em>, jamais une alerte, et il n'est jamais coloré en rouge : un disque externe branché de temps en temps fait naturellement baisser ce chiffre.</p>
+<p>Quand la corbeille explique une part notable du remplissage du disque, elle est signalée avec sa vitesse de croissance et sa part — par exemple <strong>« Corbeille 30 Go · +21 Go/sem — 75 % du remplissage »</strong>. C'est l'information qui manquait à la prévision de saturation : elle disait <em>quand</em> le disque serait plein, pas <em>à cause de quoi</em>. Si la corbeille domine, une purge (bouton <strong>Corbeille</strong>) suffit ; sinon, ce sont vos vraies données qui grossissent.</p>
+
+<h3>Résumé quotidien</h3>
+<p>Sous la vue de santé, une phrase agrège ce qui attend d'être sauvegardé, toutes sauvegardes confondues et par catégorie — « 3 projets DaVinci, 120 photos » — suivie d'un verdict : <em>rien de suspect</em>, ou le nombre de points à regarder (garde-fou déclenché, intégrité en dégradation).</p>
+
 <h3>Anomalies par rapport aux habitudes du job</h3>
 <p>Au-delà des seuils fixes, chaque job est comparé à <strong>son propre historique</strong>. Deux mesures sont croisées, et c'est le croisement qui porte l'information :</p>
 <ul>
@@ -259,6 +271,10 @@
 <h3>Test de restauration automatique</h3>
 <p>Le test de restauration (bouton <strong>Tester la restauration</strong> sur chaque job) relit un échantillon de fichiers du miroir et le compare à la source par empreinte : c'est la seule preuve que votre sauvegarde est réellement <em>exploitable</em>, et pas seulement présente. Comme il n'existait qu'en déclenchement manuel, il n'était en pratique presque jamais lancé.</p>
 <p>Le menu <strong>Test restauration</strong>, à côté de <strong>Vérif auto</strong> sur chaque job, permet désormais de le programmer : <em>Manuel</em> (par défaut), <em>Mensuel</em>, <em>Hebdomadaire</em> ou <em>Journalier</em>. Le test se lance tout seul lorsque les conditions sont réunies : les deux disques présents et aucune sauvegarde en cours — jamais pendant un backup, pour ne pas lire et écrire sur le même disque en même temps. Il ne modifie rien et s'interrompt de lui-même après un budget de lecture limité, il ne ralentit donc pas la machine. Le résultat s'affiche dans la ligne <strong>Confiance</strong> du job (voir <a href="#interface">section 6</a>). Non disponible sur une destination distante (SSH).</p>
+
+<h3>Notification « sauvegarde imminente »</h3>
+<p>Dix minutes avant une sauvegarde planifiée, une notification macOS discrète (sans son) l'annonce, avec un bouton <strong>Sauter cette fois</strong>. Utile si vous êtes sur le point de débrancher le disque ou de partir.</p>
+<p>« Sauter cette fois » ne modifie <strong>pas</strong> votre planification : l'exécution à venir est retirée, puis l'horaire d'origine est remis en place automatiquement juste après l'heure sautée. Vous retrouvez donc exactement votre réglage, sans avoir à le reconfigurer — c'est pourquoi il n'y a pas de bouton « Reporter », qui laisserait au contraire une planification durablement décalée.</p>
 
 <h2 id="imessage">12. Alertes iPhone (iMessage)</h2>
 <p>Bouton <strong>Réglages</strong> (icône ⚙️) en haut du panneau — dans les mots de l'app elle-même : « Le Mac t'envoie un <strong>iMessage</strong> » vers votre iPhone quand un backup échoue ou est reporté — via l'app Messages déjà présente sur votre téléphone, sans app tierce. Renseignez votre numéro (<code>+33…</code>) ou votre identifiant Apple associé à iMessage dans <strong>Destinataire iMessage</strong>. Le Mac doit lui-même être connecté à Messages avec ce compte. Une option permet aussi d'être alerté en cas de <strong>succès</strong>, pas seulement d'échec.</p>

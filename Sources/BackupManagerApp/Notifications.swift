@@ -13,6 +13,8 @@ final class NotificationsManager: NSObject, UNUserNotificationCenterDelegate {
     private let categoryId = "BACKUP_RESULT"
     private let openPanelActionId = "OPEN_PANEL"
     private let viewLogActionId = "VIEW_LOG"
+    private let upcomingCategoryId = "BACKUP_UPCOMING"
+    private let skipOnceActionId = "SKIP_ONCE"
 
     func configure() {
         let center = UNUserNotificationCenter.current()
@@ -21,7 +23,17 @@ final class NotificationsManager: NSObject, UNUserNotificationCenterDelegate {
         let openPanel = UNNotificationAction(identifier: openPanelActionId, title: "Ouvrir le panneau", options: [.foreground])
         let viewLog = UNNotificationAction(identifier: viewLogActionId, title: "Voir le journal", options: [.foreground])
         let category = UNNotificationCategory(identifier: categoryId, actions: [openPanel, viewLog], intentIdentifiers: [], options: [])
-        center.setNotificationCategories([category])
+
+        // « Sauvegarde imminente » : une seule action, et surtout PAS un report
+        // qui décalerait l'heure dans launchd -- la planification d'origine doit
+        // rester intacte. « Sauter cette fois » retire l'agent du seul job
+        // concerné et le réarme juste après l'heure manquée (voir api_skip_next
+        // côté backend) : même effet pour l'utilisateur, réglage préservé.
+        let skipOnce = UNNotificationAction(identifier: skipOnceActionId,
+                                            title: "Sauter cette fois", options: [])
+        let upcoming = UNNotificationCategory(identifier: upcomingCategoryId,
+                                              actions: [skipOnce], intentIdentifiers: [], options: [])
+        center.setNotificationCategories([category, upcoming])
 
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error {
@@ -51,6 +63,23 @@ final class NotificationsManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// Prévient qu'une sauvegarde va démarrer, avec l'option de la sauter.
+    func postBackupUpcoming(jobId: String, jobName: String, minutes: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = jobName
+        content.body = "Sauvegarde dans \(minutes) min."
+        content.categoryIdentifier = upcomingCategoryId
+        content.userInfo = ["jobId": jobId]
+        // Pas de son : c'est une information anticipée, pas un événement.
+        let request = UNNotificationRequest(identifier: "upcoming-\(jobId)",
+                                            content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                NSLog("NotificationsManager: failed to post upcoming notification: \(error)")
+            }
+        }
+    }
+
     // MARK: - UNUserNotificationCenterDelegate
 
     func userNotificationCenter(_ center: UNUserNotificationCenter,
@@ -65,6 +94,10 @@ final class NotificationsManager: NSObject, UNUserNotificationCenterDelegate {
         let logPath = response.notification.request.content.userInfo["logPath"] as? String
 
         switch response.actionIdentifier {
+        case skipOnceActionId:
+            if let jobId = response.notification.request.content.userInfo["jobId"] as? String {
+                appDelegate?.skipNextRun(jobId: jobId)
+            }
         case viewLogActionId:
             if let logPath {
                 NSWorkspace.shared.open(URL(fileURLWithPath: logPath))
