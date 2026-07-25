@@ -314,6 +314,32 @@
 </ul>
 <div class="tip">Depuis l'app native sur ce Mac, aucun jeton n'est nécessaire — cette protection ne s'applique qu'aux connexions venant d'un autre appareil du réseau.</div>
 
+<h2 id="macs">16. Plusieurs Macs, disques qui voyagent</h2>
+<p>Si vos SSD passent d'un Mac à l'autre — un fixe et un portable, par exemple — la sauvegarde se fait sur <strong>celui qui les a branchés</strong>, sans rien avoir à déplacer ni reconfigurer.</p>
+<p><strong>Le principe, à retenir avant tout le reste :</strong> relier deux Macs ne sert <em>jamais</em> à déclencher une sauvegarde à distance. Chaque Mac décide seul, à partir des disques qu'il voit de ses propres yeux. Le lien sert uniquement à <strong>savoir</strong> ce qui se passe chez l'autre, donc à l'afficher. Un Mac éteint, endormi ou injoignable ne peut rien empêcher.</p>
+
+<h3>Relier deux Macs</h3>
+<ol>
+  <li>Sur le premier Mac : Réglages (⚙️) → <strong>Mes Macs</strong> → <strong>Afficher un code d'appairage</strong>.</li>
+  <li>Sur le second : même écran, saisissez l'adresse du premier (par exemple <code>10.10.10.30:8787</code>) et le code à 6 chiffres, puis <strong>Relier</strong>.</li>
+</ol>
+<p>Le code est valable 5 minutes et ne sert qu'une fois. Chaque Mac reçoit ensuite son propre jeton, révocable individuellement : <strong>Retirer</strong> coupe le lien avec cette machine-là sans toucher aux autres, et le jeton de l'accès iPhone ne voyage jamais entre Macs.</p>
+
+<h3>Ce que ça change à l'écran</h3>
+<ul>
+  <li>Un job dont les disques sont ailleurs n'affiche plus « source absente » en rouge, mais <strong>« source sur MacBook Pro »</strong>, et son état passe à <strong>En attente</strong> — ni une alerte, ni un reproche : ce Mac n'a rien à faire.</li>
+  <li>Plus de faux « en retard ». La <strong>dernière sauvegarde réussie est comptée où qu'elle ait eu lieu</strong>, et l'app précise sur quelle machine.</li>
+  <li>Une notification vous prévient quand la sauvegarde s'est faite sur l'autre Mac.</li>
+  <li>Si un seul des deux disques est branché, <strong>rien ne se lance</strong> — ni ici ni ailleurs. On attend que la paire soit réunie.</li>
+</ul>
+
+<h3>L'historique suit le disque</h3>
+<p>Le disque de destination porte lui-même un registre des sauvegardes (dossier <code>_bm-groupe</code>, quelques kilo-octets, à côté de <code>miroir</code>). Où qu'il arrive, il apporte l'historique complet — y compris les sauvegardes faites par l'autre Mac. L'historique affiche alors une colonne indiquant la machine. Ce registre ne contient que des dates et des résultats : jamais vos fichiers, et il n'est jamais lu ni modifié par le moteur de sauvegarde.</p>
+
+<h3>Reprendre une sauvegarde sur un autre Mac</h3>
+<p>Branchez les disques sur un Mac qui ne connaît pas encore ce job : un bandeau propose de le <strong>reprendre ici</strong>. C'est toujours une proposition, jamais automatique — un job décrit ce qui sera écrasé et par quoi, ce n'est pas à l'app de le décider parce qu'un disque est apparu. Le job repris arrive <strong>désactivé</strong> : rien ne partira tant que vous ne l'aurez pas planifié vous-même.</p>
+<div class="tip">Les deux Macs doivent être sur le même réseau local pour se voir. S'ils ne le sont pas, chacun continue de sauvegarder normalement dès qu'il a les disques — seul l'affichage « où sont-ils » devient indisponible, et l'app le signale en datant sa dernière information.</div>
+
 <footer>Backup Manager — sauvegarde locale, sans cloud. Ce guide est embarqué dans l'app, disponible hors ligne.</footer>
 </div>
 </body>
