@@ -70,8 +70,14 @@ if EXISTING_TAG_COMMIT="$(git rev-parse "v$VERSION^{commit}" 2>/dev/null)"; then
 else
   TAG_FORCE=()
 fi
-git tag "${TAG_FORCE[@]}" "v$VERSION"
-git push "${TAG_FORCE[@]}" origin "v$VERSION"
+# ${arr[@]+"${arr[@]}"} et non "${arr[@]}" : sous `set -u`, bash 3.2 (celui de
+# macOS, /bin/bash) traite le développement d'un tableau VIDE comme une
+# variable non définie et avorte. Or TAG_FORCE est justement vide dans le cas
+# NORMAL -- publier une version neuve. Le script ne fonctionnait donc que pour
+# une republication à l'identique, où TAG_FORCE vaut (-f). Même règle que
+# backup-engine.sh, qui cible aussi bash 3.2 (voir CLAUDE.md).
+git tag ${TAG_FORCE[@]+"${TAG_FORCE[@]}"} "v$VERSION"
+git push ${TAG_FORCE[@]+"${TAG_FORCE[@]}"} origin "v$VERSION"
 
 # Si la publication de la release GitHub échoue APRÈS ce point, le tag public
 # resterait orphelin (poussé mais sans release associée). On le retire alors
