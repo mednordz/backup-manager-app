@@ -181,15 +181,31 @@ final class FlaskSupervisor {
         environmentVerified = true
     }
 
-    /// Fichiers/dossiers "gérés" par l'app — exactement ce que build-app.sh
-    /// embarque dans Resources/backup-manager-src (voir ce script pour la
-    /// même liste côté build). Tout le reste dans ~/backup-manager (jobs,
-    /// venv, logs — qui vivent en fait ailleurs, dans ~/.config/backup-manager
-    /// et ~/Library/Logs) n'est jamais touché par ce mécanisme.
-    private static let managedBackendItems = [
-        "app.py", "backup-engine.sh", "progress-parse.py", "verify-parse.py",
-        "requirements.txt", "static", "docs", "bin", "lib", "THIRD-PARTY-NOTICES",
-    ]
+    /// Fichiers/dossiers "gérés" par l'app : exactement ce que contient
+    /// Resources/backup-manager-src, ÉNUMÉRÉ plutôt que redit.
+    ///
+    /// C'était auparavant une liste écrite en dur, censée refléter celle de
+    /// build-app.sh. Les deux ont divergé dès qu'un module a été ajouté au
+    /// backend : le bundle l'embarquait, la synchronisation ne le recopiait
+    /// pas, et app.py échouait à l'import sur les machines dont
+    /// ~/backup-manager n'est pas un dépôt git — backend mort, app inerte.
+    /// Énumérer le dossier embarqué supprime la classe de bug : ce que
+    /// build-app.sh y met est synchronisé, sans qu'on ait à s'en souvenir.
+    ///
+    /// Tout le reste dans ~/backup-manager (jobs, venv, logs — qui vivent en
+    /// fait ailleurs) n'est jamais touché par ce mécanisme.
+    private static func managedBackendItems(in bundled: URL) -> [String] {
+        let fm = FileManager.default
+        guard let names = try? fm.contentsOfDirectory(atPath: bundled.path) else {
+            // Repli sur l'ancienne liste : mieux vaut synchroniser
+            // l'essentiel que rien du tout si l'énumération échoue.
+            return ["app.py", "backup-engine.sh", "progress-parse.py",
+                    "verify-parse.py", "requirements.txt", "static", "docs",
+                    "bin", "lib", "THIRD-PARTY-NOTICES"]
+        }
+        // Les fichiers cachés (.DS_Store et compagnie) n'ont rien à faire là.
+        return names.filter { !$0.hasPrefix(".") }.sorted()
+    }
 
     /// Sur un Mac où l'app n'a jamais tourné, ~/backup-manager (app.py,
     /// backup-engine.sh, static/, bin/bmengine…) n'existe pas encore — le DMG
@@ -222,7 +238,7 @@ final class FlaskSupervisor {
         let firstInstall = !fm.fileExists(atPath: appDir.appendingPathComponent("app.py").path)
         do {
             try fm.createDirectory(at: appDir, withIntermediateDirectories: true)
-            for name in Self.managedBackendItems {
+            for name in Self.managedBackendItems(in: bundled) {
                 let src = bundled.appendingPathComponent(name)
                 guard fm.fileExists(atPath: src.path) else { continue }
                 let dest = appDir.appendingPathComponent(name)
