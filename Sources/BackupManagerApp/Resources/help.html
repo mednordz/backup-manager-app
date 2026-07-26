@@ -359,6 +359,43 @@
 </ul>
 <div class="tip">L'exclusion n'est proposée que pour le disque de <strong>destination</strong>. Votre disque source reste indexé&nbsp;: vous voulez probablement pouvoir y faire des recherches.</div>
 
+<h2 id="relais">18. Le relais SSD &#8646; NAS</h2>
+
+<p>Un relais sert &agrave; une chose pr&eacute;cise&nbsp;: travailler <strong>sur le NAS quand vous &ecirc;tes chez vous</strong>, et <strong>sur le SSD quand vous sortez</strong>, sans jamais relinker vos projets ni vous demander quelle version est la bonne.</p>
+
+<div class="warn"><strong>Un relais n'est pas une sauvegarde.</strong> Une sauvegarde a une source qui a toujours raison&nbsp;; un relais a deux c&ocirc;t&eacute;s modifi&eacute;s &agrave; tour de r&ocirc;le. Il d&eacute;place la main, il ne prot&egrave;ge pas. Vos miroirs restent indispensables.</p></div>
+
+<h3>Un seul c&ocirc;t&eacute; travaille &agrave; la fois</h3>
+<p>&Agrave; tout instant, un c&ocirc;t&eacute; est celui sur lequel vous travaillez&nbsp;; l'autre est une copie. Vous rentrez&nbsp;: le SSD pousse vers le NAS, qui prend la main. Vous partez&nbsp;: le NAS repousse vers le SSD, qui la reprend. Ce passage est toujours explicite &mdash; l'application ne d&eacute;cide jamais du sens &agrave; votre place, elle vous le montre et vous le confirmez.</p>
+<p>Avant d'agir, elle affiche trois chiffres&nbsp;: ce qui arrive, ce qui change, et <strong>ce qui dispara&icirc;t</strong>. Les suppressions sont compt&eacute;es &agrave; part parce que ce sont les seules qui font mal, et elles atterrissent dans une corbeille dat&eacute;e du c&ocirc;t&eacute; receveur, r&eacute;cup&eacute;rables.</p>
+
+<h3>Quand elle refuse, et pourquoi</h3>
+<p>Deux situations distinctes, toutes deux bloquantes&nbsp;:</p>
+<ul>
+  <li><strong>Conflit</strong> &mdash; le m&ecirc;me fichier a chang&eacute; des deux c&ocirc;t&eacute;s depuis le dernier passage. Personne ne peut savoir quelle version garder&nbsp;: l'application s'arr&ecirc;te, n'&eacute;crit rien, et affiche la liste avec les dates.</li>
+  <li><strong>Travail menac&eacute;</strong> &mdash; le fichier n'a chang&eacute; que du c&ocirc;t&eacute; qui doit <em>recevoir</em>. C'est presque toujours un accident&nbsp;: du travail fait sur le c&ocirc;t&eacute; passif, qu'un envoi effacerait sans le dire.</li>
+</ul>
+<p>Elle refuse aussi si un c&ocirc;t&eacute; ne pr&eacute;sente aucun fichier alors que le dernier accord en comptait, ou si un passage supprimerait une part anormale du contenu. Un disque &agrave; moiti&eacute; mont&eacute; produit exactement le m&ecirc;me tableau qu'une suppression volontaire&nbsp;; en cas de doute, rien ne bouge.</p>
+
+<h3>Une interruption ne casse rien</h3>
+<p>L'accord entre les deux c&ocirc;t&eacute;s n'est enregistr&eacute; qu'&agrave; la toute fin, apr&egrave;s v&eacute;rification que les deux concordent r&eacute;ellement. Coupure r&eacute;seau, d&eacute;branchement, extinction&nbsp;: l'&eacute;tat pr&eacute;c&eacute;dent reste la r&eacute;f&eacute;rence, rien n'est &agrave; moiti&eacute; convenu, et le passage suivant reprend l&agrave; o&ugrave; il en &eacute;tait sans renvoyer ce qui &eacute;tait d&eacute;j&agrave; pass&eacute;.</p>
+
+<h3>Vos projets gardent le m&ecirc;me chemin</h3>
+<p>Un projet DaVinci m&eacute;morise o&ugrave; sont ses rushs. L'application maintient donc un raccourci dans <code>~/Montage/</code> qui pointe toujours vers le c&ocirc;t&eacute; ayant la main. Vos projets utilisent ce chemin-l&agrave;, et ne voient jamais la diff&eacute;rence entre le SSD et le NAS.</p>
+<p>Il faut relinker <strong>une fois</strong> chaque projet existant pour l'y faire pointer&nbsp;; ensuite, plus jamais.</p>
+<div class="tip">Le raccourci suit le c&ocirc;t&eacute; <strong>&agrave; jour</strong>, pas le c&ocirc;t&eacute; disponible. Si le NAS a la main et que vous &ecirc;tes ailleurs, le raccourci est <em>retir&eacute;</em> plut&ocirc;t que redirig&eacute; vers le SSD&nbsp;: mieux vaut un dossier introuvable qu'un projet ouvert sur des m&eacute;dias p&eacute;rim&eacute;s sans le savoir.</div>
+
+<h3>Pendant que le NAS travaille</h3>
+<p>Tant que le NAS a la main et que le SSD est branch&eacute; chez vous, l'application rapatrie r&eacute;guli&egrave;rement les changements en arri&egrave;re-plan. Le travail de la journ&eacute;e existe donc toujours en deux exemplaires. Cette copie ne passe <strong>pas</strong> la main&nbsp;: le NAS reste le c&ocirc;t&eacute; actif.</p>
+
+<h3>Si vous partez sans rapatrier</h3>
+<p>Au moment o&ugrave; vous demandez l'&eacute;jection du disque, l'application vous pr&eacute;vient que le NAS a la main et que ce disque n'a pas le travail le plus r&eacute;cent. C'est le dernier instant o&ugrave; l'oubli est rattrapable. Elle vous pr&eacute;vient&nbsp;; elle ne vous emp&ecirc;che pas.</p>
+
+<h3>Vos deux Macs, sans rien configurer</h3>
+<p>La configuration du relais voyage <strong>sur le disque</strong>, &agrave; c&ocirc;t&eacute; de l'&eacute;tat convenu. Branchez le SSD sur l'autre Mac&nbsp;: il reconna&icirc;t le relais et propose de le reprendre. Celui des deux qui a le disque fait le travail.</p>
+
+<div class="tip">Le premier passage de main copie l'int&eacute;gralit&eacute; du dossier choisi et peut durer plusieurs heures pour un projet volumineux. &Agrave; lancer un soir. Les suivants ne transportent que les diff&eacute;rences.</div>
+
 <footer>Backup Manager — sauvegarde locale, sans cloud. Ce guide est embarqué dans l'app, disponible hors ligne.</footer>
 </div>
 </body>
