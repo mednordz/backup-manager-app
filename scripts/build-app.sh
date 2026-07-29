@@ -63,7 +63,7 @@ chmod +x "$APP_DIR/Contents/MacOS/$APP_NAME"
 echo "==> bundling Flask backend (Resources/backup-manager-src)"
 BACKEND_DEST="$APP_DIR/Contents/Resources/backup-manager-src"
 mkdir -p "$BACKEND_DEST/bin"
-for item in app.py backup-engine.sh progress-parse.py verify-parse.py relay-engine.sh relay-config.py relay-manifest.py relay-plan.py relay-run.py requirements.txt static docs; do
+for item in app.py backup-engine.sh backup-config.py progress-parse.py verify-parse.py relay-engine.sh relay-config.py relay-manifest.py relay-plan.py relay-run.py requirements.txt static docs; do
   cp -R "$BACKUP_MANAGER_DIR/$item" "$BACKEND_DEST/$item"
 done
 find "$BACKEND_DEST" -name ".DS_Store" -delete

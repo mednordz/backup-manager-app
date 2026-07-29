@@ -86,7 +86,7 @@ else
 fi
 
 echo "==> [4/5] pureté du backend embarqué"
-for item in app.py backup-engine.sh progress-parse.py verify-parse.py relay-engine.sh relay-config.py relay-manifest.py relay-plan.py relay-run.py requirements.txt static docs bin/bmengine bin/rsync THIRD-PARTY-NOTICES/rsync.txt; do
+for item in app.py backup-engine.sh backup-config.py progress-parse.py verify-parse.py relay-engine.sh relay-config.py relay-manifest.py relay-plan.py relay-run.py requirements.txt static docs bin/bmengine bin/rsync THIRD-PARTY-NOTICES/rsync.txt; do
   [ -e "$BACKEND/$item" ] && ok "présent : $item" || fail "manquant : $item"
 done
 if [ -e "$BACKEND/_signing" ] || [ -e "$BACKEND/.venv" ]; then
