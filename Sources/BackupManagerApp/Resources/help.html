@@ -377,6 +377,11 @@
 </ul>
 <p>Elle refuse aussi si un c&ocirc;t&eacute; ne pr&eacute;sente aucun fichier alors que le dernier accord en comptait, ou si un passage supprimerait une part anormale du contenu. Un disque &agrave; moiti&eacute; mont&eacute; produit exactement le m&ecirc;me tableau qu'une suppression volontaire&nbsp;; en cas de doute, rien ne bouge.</p>
 
+<h3>Trancher un conflit</h3>
+<p>L'&eacute;cran de conflit montre les deux versions c&ocirc;te &agrave; c&ocirc;te, avec leur date et leur taille, et vous laisse choisir laquelle garder &mdash; fichier par fichier, ou d'un bloc avec <strong>Tout garder du disque</strong> / <strong>Tout garder du NAS</strong>.</p>
+<p>La version &eacute;cart&eacute;e <strong>n'est pas perdue</strong>&nbsp;: elle part dans la corbeille dat&eacute;e du c&ocirc;t&eacute; qui la re&ccedil;oit, et reste r&eacute;cup&eacute;rable comme n'importe quel fichier supprim&eacute;. Trancher ne d&eacute;place pas la main non plus&nbsp;: cela met seulement les deux c&ocirc;t&eacute;s d'accord sur les fichiers concern&eacute;s, apr&egrave;s quoi le passage de main redevient possible.</p>
+<div class="tip">Certains conflits se r&eacute;solvent <strong>d'eux-m&ecirc;mes</strong>. Deux fichiers peuvent porter des dates diff&eacute;rentes tout en ayant exactement le m&ecirc;me contenu &mdash; apr&egrave;s une copie manuelle, par exemple. L'application les confronte par empreinte&nbsp;: s'ils sont identiques, il n'y a rien &agrave; choisir, et ils disparaissent de la liste sans vous d&eacute;ranger.</div>
+
 <h3>Une interruption ne casse rien</h3>
 <p>L'accord entre les deux c&ocirc;t&eacute;s n'est enregistr&eacute; qu'&agrave; la toute fin, apr&egrave;s v&eacute;rification que les deux concordent r&eacute;ellement. Coupure r&eacute;seau, d&eacute;branchement, extinction&nbsp;: l'&eacute;tat pr&eacute;c&eacute;dent reste la r&eacute;f&eacute;rence, rien n'est &agrave; moiti&eacute; convenu, et le passage suivant reprend l&agrave; o&ugrave; il en &eacute;tait sans renvoyer ce qui &eacute;tait d&eacute;j&agrave; pass&eacute;.</p>
 
@@ -392,7 +397,8 @@
 <p>Au moment o&ugrave; vous demandez l'&eacute;jection du disque, l'application vous pr&eacute;vient que le NAS a la main et que ce disque n'a pas le travail le plus r&eacute;cent. C'est le dernier instant o&ugrave; l'oubli est rattrapable. Elle vous pr&eacute;vient&nbsp;; elle ne vous emp&ecirc;che pas.</p>
 
 <h3>Vos deux Macs, sans rien configurer</h3>
-<p>La configuration du relais voyage <strong>sur le disque</strong>, &agrave; c&ocirc;t&eacute; de l'&eacute;tat convenu. Branchez le SSD sur l'autre Mac&nbsp;: il reconna&icirc;t le relais et propose de le reprendre. Celui des deux qui a le disque fait le travail.</p>
+<p>La configuration du relais voyage <strong>sur le disque</strong>, &agrave; c&ocirc;t&eacute; de l'&eacute;tat convenu. Branchez le SSD sur l'autre Mac&nbsp;: un bandeau vous propose de <strong>reprendre le relais ici</strong>, sans rien avoir &agrave; ressaisir. Celui des deux Macs qui a le disque fait le travail.</p>
+<p>Seul le point de montage du partage r&eacute;seau n'est pas repris&nbsp;: il appartient &agrave; chaque Mac, pas au disque.</p>
 
 <div class="tip">Le premier passage de main copie l'int&eacute;gralit&eacute; du dossier choisi et peut durer plusieurs heures pour un projet volumineux. &Agrave; lancer un soir. Les suivants ne transportent que les diff&eacute;rences.</div>
 
