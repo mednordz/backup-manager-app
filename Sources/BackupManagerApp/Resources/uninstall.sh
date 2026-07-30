@@ -64,7 +64,11 @@ fi
 echo
 echo "==> Arrêt des tâches planifiées"
 shopt -s nullglob
-for plist in "$HOME/Library/LaunchAgents/"com.mednor.backup.*.plist "$HOME/Library/LaunchAgents/"com.mednor.backupmanager.*.plist; do
+# com.mednor.relay.* : agents du sous-systeme relais SSD/NAS (passage de main,
+# copie de securite, resolution de conflit) -- poses par app.py avec un label
+# distinct des backups, et qui survivaient a une desinstallation "complete" en
+# pointant vers des fichiers supprimes.
+for plist in "$HOME/Library/LaunchAgents/"com.mednor.backup.*.plist "$HOME/Library/LaunchAgents/"com.mednor.backupmanager.*.plist "$HOME/Library/LaunchAgents/"com.mednor.relay.*.plist; do
   label="$(basename "$plist" .plist)"
   launchctl bootout "gui/$(id -u)/$label" >/dev/null 2>&1 || true
   rm -f "$plist"
@@ -75,15 +79,24 @@ shopt -u nullglob
 echo "==> Arrêt des processus restants"
 pkill -TERM -f "backup-engine.sh" >/dev/null 2>&1 || true
 pkill -TERM -f "bin/bmengine" >/dev/null 2>&1 || true
+# Moteur du relais SSD/NAS et son executant Python : jamais arretes avant.
+pkill -TERM -f "relay-engine.sh" >/dev/null 2>&1 || true
+pkill -TERM -f "relay-run.py" >/dev/null 2>&1 || true
 # Filet de sécurité pour un éventuel serveur Flask déjà orphelin (constaté en
 # usage réel : un process app.py peut survivre à une fermeture normale de
 # l'app si elle a quitté avant ce correctif — voir FlaskSupervisor.stop()).
 pkill -TERM -f "backup-manager/app.py" >/dev/null 2>&1 || true
 sleep 1
 pkill -KILL -f "backup-engine.sh" >/dev/null 2>&1 || true
+pkill -KILL -f "relay-engine.sh" >/dev/null 2>&1 || true
+pkill -KILL -f "relay-run.py" >/dev/null 2>&1 || true
 pkill -KILL -f "backup-manager/app.py" >/dev/null 2>&1 || true
-rm -f /tmp/backup-*.lock >/dev/null 2>&1 || true
-rmdir /tmp/backup-*.lock >/dev/null 2>&1 || true
+# Les verrous sont des DOSSIERS (mkdir atomique) contenant un fichier pid :
+# rm -f echoue sur un dossier et rmdir sur un dossier non vide, tous deux en
+# silence -- un verrou orphelin survivait et bloquait le job apres
+# reinstallation. rm -rf couvre les deux formes, y compris les verrous du
+# relais (/tmp/backup-relay-<id>.lock, qui matche le meme motif).
+rm -rf /tmp/backup-*.lock >/dev/null 2>&1 || true
 
 if [ -d "$CONFIG_DIR/jobs" ] || [ -f "$CONFIG_DIR/settings.json" ]; then
   echo "==> Sauvegarde de vos configurations de job avant suppression"
@@ -113,6 +126,12 @@ echo "==> Suppression des journaux"
 # cette fusion, jamais nettoye par le seul motif "backup-*.log" ci-dessous.
 rm -f "$HOME/Library/Logs/"backup-*.log "$HOME/Library/Logs/"backup-*.launchd.log \
       "$HOME/Library/Logs/"backupmanager-*.log >/dev/null 2>&1 || true
+# Journaux launchd du relais (relay-<id>.launchd.log, poses par app.py).
+rm -f "$HOME/Library/Logs/"relay-*.launchd.log >/dev/null 2>&1 || true
+# Chemin ACTUEL du journal du serveur (~/Library/Logs/BackupManager/, tenu
+# synchronise avec FlaskSupervisor.swift et api_restart) ; /tmp/... ci-dessous
+# reste vise pour les installations anterieures a ce changement.
+rm -rf "$HOME/Library/Logs/BackupManager" >/dev/null 2>&1 || true
 rm -f /tmp/backup-manager.out >/dev/null 2>&1 || true
 
 echo "==> Suppression du cache"
