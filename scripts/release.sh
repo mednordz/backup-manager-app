@@ -23,6 +23,29 @@ NOTES_FILE="$RELEASES_DIR/BackupManager-$VERSION.md"
 
 mkdir -p "$RELEASES_DIR"
 
+#------------------------------------------------------------------------------
+# PORTAIL D'ÉPREUVES DU BACKEND — BLOQUANT, contrairement à check-help-coverage.
+#
+# Le DMG embarque le backend tel qu'il est dans ~/backup-manager : c'est LUI
+# qu'on publie. Leçon des 2026-07-25/30 : un moteur syntaxiquement invalide
+# sous bash 3.2 a été publié et a vécu six jours, et un bug de normalisation
+# Unicode quatre, parce que les épreuves n'étaient pas rejouées à chaque
+# publication. La partie rapide (< 10 s, sans matériel) tourne donc ici, et
+# son échec ARRÊTE la release. La partie complète (disque jetable + NAS) reste
+# manuelle : tests/lancer.sh --complet.
+#------------------------------------------------------------------------------
+BM_SRC_DIR="${BM_SRC_DIR:-$HOME/backup-manager}"
+if [ -x "$BM_SRC_DIR/tests/lancer.sh" ]; then
+  echo "==> épreuves du backend (bloquant)"
+  "$BM_SRC_DIR/tests/lancer.sh" || {
+    echo "ERREUR : les épreuves du backend échouent — publication refusée." >&2
+    exit 1
+  }
+else
+  echo "ERREUR : $BM_SRC_DIR/tests/lancer.sh introuvable — le portail d'épreuves est obligatoire." >&2
+  exit 1
+fi
+
 echo "==> notes de version"
 if [ -n "$NOTES_FILE_ARG" ]; then
   cp "$NOTES_FILE_ARG" "$NOTES_FILE"
