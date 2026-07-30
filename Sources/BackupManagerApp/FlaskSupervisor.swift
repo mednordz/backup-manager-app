@@ -177,7 +177,11 @@ final class FlaskSupervisor {
         if !fm.isExecutableFile(atPath: pythonPath.path) {
             runSync("/usr/bin/python3", ["-m", "venv", venvDir.path])
         }
-        if !runSyncSucceeds(pythonPath.path, ["-c", "import flask, qrcode"]) {
+        // waitress fait partie du contrôle : sans lui, une machine déjà
+        // bootstrappée (flask+qrcode présents) ne relancerait jamais pip et
+        // resterait pour toujours sur le serveur de développement de Flask —
+        // le repli d'app.py masquerait l'absence au lieu de la combler.
+        if !runSyncSucceeds(pythonPath.path, ["-c", "import flask, qrcode, waitress"]) {
             runSync(pythonPath.path, ["-m", "pip", "install", "-q", "--upgrade", "pip"])
             runSync(pythonPath.path, ["-m", "pip", "install", "-q", "-r", appDir.appendingPathComponent("requirements.txt").path])
         }
