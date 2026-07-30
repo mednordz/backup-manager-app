@@ -27,10 +27,20 @@ final class JobPoller {
             current[id] = (running, status)
 
             if hasBaseline, let prior = previous[id], prior.running, !running {
-                let name = (job["name"] as? String) ?? id
-                let derived = job["derived"] as? [String: Any]
-                let logPath = derived?["log"] as? String
-                notifyFinished(jobName: name, status: status, logPath: logPath)
+                // Un run REPORTÉ (disque absent, verrou…) est l'issue nominale
+                // d'une sonde déclenchée au branchement — l'agent se réveille à
+                // chaque montage de n'importe quel volume, y compris les
+                // partages réseau remontés par nas-automount. Notifier chaque
+                // report produisait des dizaines de bannières par jour pendant
+                // que les disques travaillaient, normalement, sur l'autre Mac.
+                // Le report reste visible sur la carte du job ; seuls les
+                // dénouements qui apprennent quelque chose passent en bannière.
+                if status != "skipped" {
+                    let name = (job["name"] as? String) ?? id
+                    let derived = job["derived"] as? [String: Any]
+                    let logPath = derived?["log"] as? String
+                    notifyFinished(jobName: name, status: status, logPath: logPath)
+                }
             }
 
             // Sauvegarde faite sur un AUTRE Mac du groupe : sans ça,
