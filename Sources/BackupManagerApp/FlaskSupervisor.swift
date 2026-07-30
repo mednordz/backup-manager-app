@@ -68,6 +68,9 @@ final class FlaskSupervisor {
     private var consecutiveFailures = 0
     private let minLaunchInterval: TimeInterval = 3
     private let maxConsecutiveFailures = 4
+    /// Rythme du sondage de secours en état .crashed. Lent à dessein : il ne
+    /// sert qu'à se raviser, pas à surveiller.
+    private let crashedRecoveryInterval: TimeInterval = 10
 
     func markIntentionalQuit() {
         intentionalQuit = true
@@ -302,6 +305,7 @@ final class FlaskSupervisor {
 
         if consecutiveFailures >= maxConsecutiveFailures {
             delegate?.flaskStatusChanged(.crashed)
+            beginCrashedRecovery(generation: gen)
             return
         }
 
@@ -355,6 +359,7 @@ final class FlaskSupervisor {
             NSLog("FlaskSupervisor: app.py did not respond after \(attempt) attempts — giving up and surfacing failure")
             consecutiveFailures = maxConsecutiveFailures
             delegate?.flaskStatusChanged(.crashed)
+            beginCrashedRecovery(generation: gen)
             return
         }
         probe { [weak self] alive in
@@ -463,6 +468,38 @@ final class FlaskSupervisor {
     // single-threaded dev server at a time. Do not add a second, independent
     // polling timer elsewhere — route any additional periodic need through
     // FlaskSupervisorDelegate.flaskJobsUpdated instead.
+
+    /// Sonde lente pendant l'état .crashed, jusqu'à ce que le serveur réponde.
+    ///
+    /// Sans elle, .crashed était DÉFINITIF : après quatre sondages ratés, l'app
+    /// affichait « Le serveur local n'a pas pu démarrer » pour toujours, y
+    /// compris quand le serveur tournait et répondait en 15 ms.
+    ///
+    /// Constaté sur le MacBook le 2026-07-30 : le backend et l'application
+    /// avaient exactement le même âge — l'app l'avait donc bien lancé — mais le
+    /// sondage de démarrage, avec ses 4 secondes de délai, n'avait pas tenu
+    /// pendant que les disques externes se réveillaient. Le verdict s'était
+    /// figé, et seul un redémarrage manuel en sortait.
+    ///
+    /// Une preuve vaut mieux qu'une conclusion antérieure : tant que l'app est
+    /// dans cet état, elle redemande, et se ravise dès que le serveur répond.
+    private func beginCrashedRecovery(generation gen: Int) {
+        guard gen == generation else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + crashedRecoveryInterval) { [weak self] in
+            guard let self, gen == self.generation else { return }
+            self.probe { vivant in
+                guard gen == self.generation else { return }
+                if vivant {
+                    // Le serveur répond : on efface le verdict et on repart.
+                    self.consecutiveFailures = 0
+                    self.delegate?.flaskStatusChanged(.running)
+                    self.beginHealthMonitor(generation: gen)
+                } else {
+                    self.beginCrashedRecovery(generation: gen)
+                }
+            }
+        }
+    }
 
     private func fetchJobs(completion: @escaping ([[String: Any]]?) -> Void) {
         var request = URLRequest(url: baseURL.appendingPathComponent("api/jobs"))
