@@ -186,9 +186,24 @@ cat > "$ENTITLEMENTS" <<ENTPLIST
 </plist>
 ENTPLIST
 
-echo "==> codesign (ad-hoc, stable identifier: $BUNDLE_ID)"
-codesign --force --deep --sign - --identifier "$BUNDLE_ID" --options runtime \
-  --entitlements "$ENTITLEMENTS" "$APP_DIR"
+# Signé avec le MÊME certificat que bmengine, et non en ad-hoc.
+#
+# En ad-hoc, macOS n'a que l'empreinte du binaire pour identifier l'app. Elle
+# change à chaque compilation : chaque déploiement était donc une application
+# inconnue pour la confidentialité du système, et l'Accès complet au disque
+# devait être réaccordé À CHAQUE FOIS. Mesuré sur trois versions successives —
+# empreinte de l'app différente à chaque fois, celle de bmengine identique.
+#
+# Avec un certificat, l'exigence désignée devient « cet identifiant + ce
+# certificat » au lieu de « cette empreinte » : elle survit aux recompilations.
+# C'est exactement pour cette raison que bmengine était déjà signé ainsi.
+#
+# bmengine n'est PAS re-signé au passage : il vit dans Contents/Resources/, que
+# --deep ne traite pas comme du code imbriqué. Vérifié, son empreinte et son
+# identifiant ne bougent pas — son autorisation reste donc acquise.
+echo "==> codesign (certificat: $BMENGINE_SIGN_IDENTITY, identifiant: $BUNDLE_ID)"
+codesign --force --deep --sign "$BMENGINE_SIGN_IDENTITY" --identifier "$BUNDLE_ID" \
+  --options runtime --entitlements "$ENTITLEMENTS" "$APP_DIR"
 codesign --verify --deep --strict "$APP_DIR"
 
 echo "==> done: $APP_DIR"
