@@ -7,7 +7,17 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BACKUP_MANAGER_DIR="$HOME/backup-manager"
+# BM_SRC_DIR, la MEME variable que le portail des epreuves de release.sh.
+# Ce chemin etait code en dur ici alors que release.sh, lui, acceptait la
+# surcharge : les epreuves portaient donc sur un arbre et le DMG embarquait
+# celui-ci. Un backend jamais eprouve pouvait ainsi etre publie en silence.
+# Une seule variable pour les deux etapes, defaut inchange.
+BACKUP_MANAGER_DIR="${BM_SRC_DIR:-$HOME/backup-manager}"
+[ -d "$BACKUP_MANAGER_DIR" ] || { echo "build failed: backend source introuvable : $BACKUP_MANAGER_DIR (voir BM_SRC_DIR)" >&2; exit 1; }
+# "[ -z ... ] || echo", et non "[ -n ... ] && echo" : sous "set -e", une liste
+# && dont le test echoue rend un code non nul et avorte le script. La forme ||
+# rend toujours 0. Meme regle que BM_VERSION quelques lignes plus bas.
+[ -z "${BM_SRC_DIR:-}" ] || echo "==> backend source surchargee via BM_SRC_DIR : $BACKUP_MANAGER_DIR"
 BRAND_DIR="$PROJECT_DIR/Sources/BackupManagerApp/Resources/Brand"
 BUILD_DIR="$PROJECT_DIR/.build"
 APP_NAME="BackupManager"

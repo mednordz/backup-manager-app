@@ -16,7 +16,12 @@ VERSION="${1:?usage: release.sh <version> [build_number] [notes_file]}"
 BUILD_NUMBER="${2:-$(date +%s)}"
 NOTES_FILE_ARG="${3:-}"
 RELEASES_DIR="$PROJECT_DIR/releases"
-GENERATE_APPCAST="$(find "$PROJECT_DIR/.build/artifacts/sparkle" -iname generate_appcast -print -quit)"
+# Le "|| true" est indispensable : quand .build/artifacts/sparkle est absent
+# (depot fraichement clone, ou .build efface), find sort en erreur et "set -e"
+# avorte le script ICI, donc AVANT le message explicite deux lignes plus bas.
+# Ce message restait ainsi invisible : la sortie etait muette au lieu de dire
+# quoi faire, a savoir lancer "swift build".
+GENERATE_APPCAST="$(find "$PROJECT_DIR/.build/artifacts/sparkle" -iname generate_appcast -print -quit 2>/dev/null || true)"
 NOTES_FILE="$RELEASES_DIR/BackupManager-$VERSION.md"
 
 [ -x "$GENERATE_APPCAST" ] || { echo "generate_appcast not found — run 'swift build' first" >&2; exit 1; }
@@ -26,15 +31,25 @@ mkdir -p "$RELEASES_DIR"
 #------------------------------------------------------------------------------
 # PORTAIL D'ÉPREUVES DU BACKEND — BLOQUANT, contrairement à check-help-coverage.
 #
-# Le DMG embarque le backend tel qu'il est dans ~/backup-manager : c'est LUI
+# Le DMG embarque le backend tel qu'il est dans $BM_SRC_DIR : c'est LUI
 # qu'on publie. Leçon des 2026-07-25/30 : un moteur syntaxiquement invalide
 # sous bash 3.2 a été publié et a vécu six jours, et un bug de normalisation
 # Unicode quatre, parce que les épreuves n'étaient pas rejouées à chaque
 # publication. La partie rapide (< 10 s, sans matériel) tourne donc ici, et
 # son échec ARRÊTE la release. La partie complète (disque jetable + NAS) reste
 # manuelle : tests/lancer.sh --complet.
+#
+# BM_SRC_DIR est EXPORTE : build-app.sh embarquait toujours $HOME/backup-manager
+# en dur, sans tenir compte de cette variable. La commande
+# "BM_SRC_DIR=/autre/checkout scripts/release.sh 0.3.0" validait donc un arbre
+# et en publiait un autre : le DMG partait avec un backend jamais eprouve, sans
+# un mot. Une seule variable designe desormais LA source, du portail des
+# epreuves jusque dans le bundle. Corriger ici plutot que retirer la surcharge :
+# un second checkout reste utile, et la coherence entre les deux etapes ne doit
+# pas dependre de la memoire de la personne qui publie.
 #------------------------------------------------------------------------------
-BM_SRC_DIR="${BM_SRC_DIR:-$HOME/backup-manager}"
+export BM_SRC_DIR="${BM_SRC_DIR:-$HOME/backup-manager}"
+echo "==> backend source : $BM_SRC_DIR (eprouve ici ET embarque dans le DMG)"
 if [ -x "$BM_SRC_DIR/tests/lancer.sh" ]; then
   echo "==> épreuves du backend (bloquant)"
   "$BM_SRC_DIR/tests/lancer.sh" || {

@@ -9,11 +9,16 @@ enum FlaskStatus {
 
 protocol FlaskSupervisorDelegate: AnyObject {
     func flaskStatusChanged(_ status: FlaskStatus)
-    /// Fired at most once per health-monitor tick (~5s), piggybacking on the
-    /// single shared /api/jobs request the supervisor already makes — callers
-    /// must NOT start their own independent polling timer against Flask's
-    /// single-threaded dev server, since overlapping pollers can fill its
-    /// small listen backlog and cause connections to silently stall.
+    /// Émis au plus une fois par tour du moniteur de santé (~5 s), en
+    /// s'appuyant sur l'UNIQUE requête /api/jobs que le superviseur fait déjà.
+    ///
+    /// Ne pas ajouter de second minuteur de scrutation indépendant : la raison
+    /// n'est plus la fragilité du serveur de développement mono-thread de Flask
+    /// (app.py est servi par waitress, 8 fils, depuis un moment — la contrainte
+    /// technique a disparu), mais qu'un seul instantané partagé garde tous les
+    /// consommateurs (badge du Dock, icône de la barre de menus, notifications,
+    /// `hasRunningJob`) rigoureusement d'accord entre eux, et évite d'empiler
+    /// des requêtes redondantes contre un backend qui shelle vers /sbin/mount.
     func flaskJobsUpdated(_ jobs: [[String: Any]])
 }
 
@@ -29,7 +34,7 @@ protocol FlaskSupervisorDelegate: AnyObject {
 /// Only the chain matching the current generation is allowed to act — this
 /// prevents two overlapping settle/retry loops from both trying to launch a
 /// process at once, which previously created a thundering-herd of probes
-/// against Flask's single-threaded dev server.
+/// against the backend (et, pire, deux `app.py` se disputant le port 8787).
 final class FlaskSupervisor {
     weak var delegate: FlaskSupervisorDelegate?
 
@@ -55,6 +60,14 @@ final class FlaskSupervisor {
 
     private var process: Process?
     private var environmentVerified = false
+
+    /// Vrai quand la resynchronisation depuis le bundle a RÉELLEMENT changé au
+    /// moins un fichier de ~/backup-manager pendant ce lancement. C'est la
+    /// poignée de main de version : un backend déjà vivant a forcément chargé
+    /// son code AVANT cette resynchronisation, donc si quelque chose a changé,
+    /// l'adopter tel quel revient à faire tourner l'ANCIEN code indéfiniment.
+    /// (Voir bootstrapBackendIfNeeded et start.)
+    private var bundledBackendChanged = false
 
     /// Set (via a WKScriptMessageHandler bridge from app.js's quitApp()) right
     /// before the web UI calls POST /api/quit, so the next process exit is
@@ -85,9 +98,11 @@ final class FlaskSupervisor {
         }
     }
 
-    /// Termine le process app.py, si un est en cours. Appelé depuis
-    /// applicationWillTerminate — sans ça, le child process (lancé via
-    /// Process(), pas dans le même groupe de process que l'app) devient
+    /// Termine le backend, qu'on en possède le handle OU NON — les deux bouts
+    /// comptent, voir le commentaire dans le corps pour le second.
+    ///
+    /// Appelé depuis applicationWillTerminate — sans ça, le child process
+    /// (lancé via Process(), pas dans le même groupe de process que l'app) devient
     /// orphelin et continue de tourner indéfiniment après que l'app ait
     /// quitté, gardant le port 8787 occupé pour la prochaine instance
     /// (constaté en usage réel : un process zombie datant d'un lancement
@@ -95,26 +110,114 @@ final class FlaskSupervisor {
     /// une désinstallation complète, et répondait toujours aux requêtes API
     /// à la place de la nouvelle instance).
     func stop() {
-        guard let p = process else { return }
-        p.terminationHandler = nil
-        if p.isRunning {
-            p.terminate()
-            // Bounded wait: p.waitUntilExit() alone can block the calling
-            // thread (applicationWillTerminate, on the main thread)
-            // indefinitely if app.py ignores SIGTERM or is wedged. Wait on a
-            // background queue instead, with a 5s timeout, and escalate to
-            // SIGKILL if the process hasn't exited by then.
-            let sema = DispatchSemaphore(value: 0)
-            DispatchQueue.global(qos: .utility).async {
-                p.waitUntilExit()
-                sema.signal()
-            }
-            if sema.wait(timeout: .now() + 5) == .timedOut {
-                NSLog("FlaskSupervisor: app.py still running 5s after SIGTERM, sending SIGKILL")
-                kill(p.processIdentifier, SIGKILL)
-            }
+        if let p = process {
+            p.terminationHandler = nil
+            process = nil
+            Self.terminate(p, raison: "fermeture de l'application")
+            return
         }
-        process = nil
+        // `process == nil` ne signifie PAS « aucun backend ne tourne ».
+        //
+        // Après un redémarrage demandé depuis l'interface web, app.py se
+        // relance lui-même DÉTACHÉ (subprocess.Popen(..., start_new_session=True),
+        // voir api_restart) : le superviseur perd tout handle dessus et se
+        // contente de le surveiller par HTTP — le moniteur de santé l'assume
+        // explicitement. L'ancien `guard let p = process else { return }`
+        // rendait donc stop() totalement inerte dans ce cas précis :
+        // redémarrage depuis l'UI puis Cmd-Q laissait le backend vivant, tenant
+        // le port 8787. L'instance suivante l'« adoptait » (la sonde de start()
+        // le trouve vivant), si bien qu'après une mise à jour Sparkle le
+        // processus adopté exécutait l'ANCIEN code alors que les fichiers
+        // venaient d'être resynchronisés — et rien ne le redémarrait jamais.
+        stopUnownedBackend()
+    }
+
+    /// SIGTERM, attente BORNÉE, puis SIGKILL.
+    ///
+    /// Extrait ici parce que deux appelants en ont besoin — stop() à la
+    /// fermeture, et le moniteur de santé quand le process qu'on possède est
+    /// vivant mais figé. Une seule implémentation : c'est exactement le patron
+    /// de bug historique de ce projet (deux copies de la même idée qui
+    /// divergent) qu'on refuse de recréer.
+    ///
+    /// L'attente est bornée parce que p.waitUntilExit() seul peut bloquer le
+    /// fil appelant (applicationWillTerminate, fil principal) indéfiniment si
+    /// app.py ignore SIGTERM ou est figé.
+    private static func terminate(_ p: Process, raison: String) {
+        guard p.isRunning else { return }
+        p.terminate()
+        let sema = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .utility).async {
+            p.waitUntilExit()
+            sema.signal()
+        }
+        if sema.wait(timeout: .now() + 5) == .timedOut {
+            NSLog("FlaskSupervisor: app.py toujours vivant 5 s après SIGTERM (\(raison)) — envoi de SIGKILL")
+            kill(p.processIdentifier, SIGKILL)
+        }
+    }
+
+    /// Arrête un backend vivant dont on n'a AUCUN handle (respawn détaché
+    /// d'app.py, ou reliquat d'une session précédente).
+    ///
+    /// Appelé depuis applicationWillTerminate, sur le fil principal : chaque
+    /// étape est bornée dans le temps (~4 s au pire au total), pour ne pas se
+    /// faire tuer par le chien de garde de macOS pendant la fermeture.
+    ///
+    /// Deux étapes, la seconde seulement si la première n'a pas suffi :
+    ///  1. POST /api/quit — c'est app.py lui-même qui s'arrête, exactement le
+    ///     chemin qu'emprunte déjà le bouton « Quitter » de l'interface, et il
+    ///     n'affecte PAS les sauvegardes en cours (le moteur tourne détaché via
+    ///     launchd). Aucune supposition sur le PID ni sur la ligne de commande :
+    ///     celle-ci ne contient d'ailleurs PAS le chemin du venv, macOS résolvant
+    ///     le lien .venv/bin/python vers le Python du système — un pgrep dessus
+    ///     ne trouverait rien (vérifié sur le backend en production).
+    ///  2. si le port répond toujours, on tue le process qui l'écoute, retrouvé
+    ///     par lsof. On n'en arrive là QUE si l'étape 1 a reçu un 200 : c'est la
+    ///     preuve que ce qui tient le port implémente bien notre API, et non
+    ///     qu'un programme tiers a pris 8787 — sans cette condition, tuer par
+    ///     numéro de port serait un tir à l'aveugle.
+    private func stopUnownedBackend() {
+        var accepte = false
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/quit"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 2
+        let sema = DispatchSemaphore(value: 0)
+        URLSession.shared.dataTask(with: request) { _, response, _ in
+            accepte = ((response as? HTTPURLResponse)?.statusCode ?? 0) == 200
+            sema.signal()
+        }.resume()
+        guard sema.wait(timeout: .now() + 3) == .success, accepte else { return }
+        NSLog("FlaskSupervisor: backend non possédé (respawn détaché) — /api/quit accepté")
+
+        // api_quit laisse d'abord partir sa réponse HTTP (temporisation de
+        // 0,4 s côté app.py) puis appelle os._exit : on lui laisse le temps de
+        // libérer le port avant de conclure quoi que ce soit.
+        usleep(1_000_000)
+        var pids = listeningBackendPIDs()
+        guard !pids.isEmpty else { return }
+        NSLog("FlaskSupervisor: le port \(port) est toujours tenu après /api/quit — SIGTERM sur \(pids)")
+        for pid in pids { kill(pid, SIGTERM) }
+        usleep(500_000)
+        pids = listeningBackendPIDs()
+        for pid in pids {
+            NSLog("FlaskSupervisor: pid \(pid) tient encore le port \(port) — SIGKILL")
+            kill(pid, SIGKILL)
+        }
+    }
+
+    /// PID(s) qui écoutent le port du backend. Restreint à l'utilisateur
+    /// courant : sur un Mac partagé, on ne touche jamais au process d'un autre
+    /// compte. lsof sort en 1 quand il ne trouve rien, ce n'est pas une panne —
+    /// d'où logFailure: false.
+    private func listeningBackendPIDs() -> [pid_t] {
+        let (code, sortie) = runCapturing(
+            "/usr/sbin/lsof",
+            ["-nP", "-a", "-u", String(getuid()), "-iTCP:\(port)", "-sTCP:LISTEN", "-t"],
+            logFailure: false)
+        guard code == 0 else { return [] }
+        return sortie.split(whereSeparator: { $0 == "\n" || $0 == "\r" })
+            .compactMap { pid_t($0.trimmingCharacters(in: .whitespaces)) }
     }
 
     func manualRestart() {
@@ -122,7 +225,12 @@ final class FlaskSupervisor {
         healthTimer?.cancel()
         healthTimer = nil
         consecutiveFailures = 0
-        attemptLaunch(generation: generation)
+        // prepareThenLaunch, et non attemptLaunch directement : ensureEnvironment()
+        // ne mémorise plus un succès qui n'a pas eu lieu (voir plus bas), donc ce
+        // bouton RETENTE réellement la création du venv et l'installation pip.
+        // C'est précisément ce que l'utilisateur attend de « Relancer le serveur »
+        // après une toute première installation faite hors ligne.
+        prepareThenLaunch(generation: generation)
     }
 
     func start() {
@@ -144,22 +252,30 @@ final class FlaskSupervisor {
                 guard gen == self.generation else { return }
                 self.probe { [weak self] alive in
                     guard let self, gen == self.generation else { return }
-                    if alive {
+                    if alive && self.bundledBackendChanged {
+                        // POIGNÉE DE MAIN DE VERSION, la plus simple qui ferme
+                        // vraiment le trou : le backend qui répond a chargé son
+                        // code AVANT la resynchronisation qu'on vient de faire,
+                        // et celle-ci a changé au moins un fichier. L'adopter
+                        // reviendrait à laisser tourner l'ancien code pour
+                        // toujours après une mise à jour Sparkle — le cas exact
+                        // du backend orphelin décrit dans stop(). On le remplace.
+                        //
+                        // Pourquoi comparer les FICHIERS plutôt que demander sa
+                        // version au backend : app.py n'expose aucun numéro de
+                        // version, et l'ajouter demanderait de modifier l'autre
+                        // dépôt PUIS d'attendre qu'il soit déployé partout — un
+                        // backend ancien, justement, ne saurait pas répondre. La
+                        // comparaison de contenu, elle, marche dès cette version
+                        // et ne redémarre QUE quand quelque chose a réellement
+                        // changé (pas à chaque lancement).
+                        NSLog("FlaskSupervisor: un backend répond mais il est antérieur au backend embarqué (fichiers resynchronisés) — remplacement")
+                        self.replaceRunningBackend(generation: gen)
+                    } else if alive {
                         self.delegate?.flaskStatusChanged(.running)
                         self.beginHealthMonitor(generation: gen)
                     } else {
-                        // ensureEnvironment() shells out synchronously (venv creation,
-                        // pip install) — on a first-ever launch this can take real
-                        // seconds over the network, and running it on the main thread
-                        // would beachball the whole app for that whole window.
-                        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                            guard let self else { return }
-                            self.ensureEnvironment()
-                            DispatchQueue.main.async {
-                                guard gen == self.generation else { return }
-                                self.attemptLaunch(generation: gen)
-                            }
-                        }
+                        self.prepareThenLaunch(generation: gen)
                     }
                 }
             }
@@ -167,6 +283,37 @@ final class FlaskSupervisor {
     }
 
     // MARK: - Environment bootstrap (mirrors start-headless.sh)
+
+    /// Prépare l'environnement Python HORS du fil principal puis lance.
+    /// ensureEnvironment() shelle de façon synchrone (création du venv,
+    /// installation pip) : au tout premier lancement ça peut prendre de vraies
+    /// secondes sur le réseau, et le faire sur le fil principal figerait toute
+    /// l'app pendant ce temps.
+    private func prepareThenLaunch(generation gen: Int) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            self.ensureEnvironment()
+            DispatchQueue.main.async {
+                guard gen == self.generation else { return }
+                self.attemptLaunch(generation: gen)
+            }
+        }
+    }
+
+    /// Remplace un backend vivant qu'on ne possède pas par un neuf. Tout se
+    /// passe hors du fil principal : stopUnownedBackend() attend jusqu'à ~4 s.
+    private func replaceRunningBackend(generation gen: Int) {
+        delegate?.flaskStatusChanged(.starting)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            self.stopUnownedBackend()
+            self.ensureEnvironment()
+            DispatchQueue.main.async {
+                guard gen == self.generation else { return }
+                self.attemptLaunch(generation: gen)
+            }
+        }
+    }
 
     private func ensureEnvironment() {
         guard !environmentVerified else { return }
@@ -181,11 +328,26 @@ final class FlaskSupervisor {
         // bootstrappée (flask+qrcode présents) ne relancerait jamais pip et
         // resterait pour toujours sur le serveur de développement de Flask —
         // le repli d'app.py masquerait l'absence au lieu de la combler.
-        if !runSyncSucceeds(pythonPath.path, ["-c", "import flask, qrcode, waitress"]) {
+        let controleImports = ["-c", "import flask, qrcode, waitress"]
+        if !runSyncSucceeds(pythonPath.path, controleImports) {
             runSync(pythonPath.path, ["-m", "pip", "install", "-q", "--upgrade", "pip"])
             runSync(pythonPath.path, ["-m", "pip", "install", "-q", "-r", appDir.appendingPathComponent("requirements.txt").path])
         }
-        environmentVerified = true
+        // On ne mémorise QUE ce qui a réellement eu lieu.
+        //
+        // `environmentVerified = true` était posé inconditionnellement, même
+        // quand venv ou pip venaient d'échouer : un succès imaginaire, gravé
+        // pour toute la session. Une première installation hors ligne ne
+        // retentait donc plus jamais rien — l'utilisateur voyait .crashed, et
+        // le journal ne disait pas un mot (voir runCapturing plus bas, qui
+        // envoyait tout vers nullDevice). Ici on REVÉRIFIE, et un échec laisse
+        // le drapeau à false pour que « Relancer le serveur » puisse retenter.
+        let (code, sortie) = runCapturing(pythonPath.path, controleImports, logFailure: false)
+        environmentVerified = code == 0
+        if !environmentVerified {
+            let extrait = sortie.trimmingCharacters(in: .whitespacesAndNewlines).suffix(400)
+            NSLog("FlaskSupervisor: environnement Python toujours incomplet après bootstrap (flask/qrcode/waitress non importables) : \(extrait) — sera retenté au prochain essai de lancement")
+        }
     }
 
     /// Fichiers/dossiers "gérés" par l'app : exactement ce que contient
@@ -201,17 +363,27 @@ final class FlaskSupervisor {
     ///
     /// Tout le reste dans ~/backup-manager (jobs, venv, logs — qui vivent en
     /// fait ailleurs) n'est jamais touché par ce mécanisme.
+    ///
+    /// La liste de repli qui vivait ici a été SUPPRIMÉE, pas complétée. Elle
+    /// avait re-divergé de la liste blanche de build-app.sh (backup-config.py
+    /// et les cinq modules relay-* y manquaient), et surtout elle ne pouvait
+    /// rien sauver : si `contentsOfDirectory` échoue sur ce dossier, c'est
+    /// qu'il est illisible, et le `copyItem` qui suit échouerait sur CHACUN de
+    /// ces noms de toute façon. Recopier les six noms manquants n'aurait fait
+    /// que réarmer la divergence pour le prochain module ajouté. Il n'y a
+    /// désormais qu'une seule source de vérité — ce que build-app.sh a
+    /// réellement mis dans le bundle — et un échec se voit dans le journal au
+    /// lieu de se déguiser en synchronisation partielle.
     private static func managedBackendItems(in bundled: URL) -> [String] {
         let fm = FileManager.default
-        guard let names = try? fm.contentsOfDirectory(atPath: bundled.path) else {
-            // Repli sur l'ancienne liste : mieux vaut synchroniser
-            // l'essentiel que rien du tout si l'énumération échoue.
-            return ["app.py", "backup-engine.sh", "progress-parse.py",
-                    "verify-parse.py", "requirements.txt", "static", "docs",
-                    "bin", "lib", "THIRD-PARTY-NOTICES"]
+        do {
+            let names = try fm.contentsOfDirectory(atPath: bundled.path)
+            // Les fichiers cachés (.DS_Store et compagnie) n'ont rien à faire là.
+            return names.filter { !$0.hasPrefix(".") }.sorted()
+        } catch {
+            NSLog("FlaskSupervisor: impossible d'énumérer le backend embarqué (\(bundled.path)) : \(error) — aucune synchronisation de ~/backup-manager possible")
+            return []
         }
-        // Les fichiers cachés (.DS_Store et compagnie) n'ont rien à faire là.
-        return names.filter { !$0.hasPrefix(".") }.sorted()
     }
 
     /// Sur un Mac où l'app n'a jamais tourné, ~/backup-manager (app.py,
@@ -243,12 +415,21 @@ final class FlaskSupervisor {
             return
         }
         let firstInstall = !fm.fileExists(atPath: appDir.appendingPathComponent("app.py").path)
+        var modifies: [String] = []
         do {
             try fm.createDirectory(at: appDir, withIntermediateDirectories: true)
             for name in Self.managedBackendItems(in: bundled) {
                 let src = bundled.appendingPathComponent(name)
                 guard fm.fileExists(atPath: src.path) else { continue }
                 let dest = appDir.appendingPathComponent(name)
+                // Comparaison de contenu AVANT la copie. Elle sert deux fois :
+                // elle évite de réécrire chaque lancement des fichiers
+                // identiques, et surtout c'est ELLE qui répond à la question
+                // « le backend déjà vivant exécute-t-il encore l'ancien code ? »
+                // (voir bundledBackendChanged / start()). contentsEqual compare
+                // récursivement le contenu des dossiers, pas seulement leur nom.
+                if fm.contentsEqual(atPath: src.path, andPath: dest.path) { continue }
+                modifies.append(name)
                 // Atomic swap instead of remove-then-copy: a crash/kill
                 // mid-copy previously could leave `dest` missing entirely
                 // (removed but not yet replaced) instead of either the old
@@ -264,30 +445,71 @@ final class FlaskSupervisor {
                     try fm.moveItem(at: tmpDest, to: dest)
                 }
             }
-            NSLog("FlaskSupervisor: \(firstInstall ? "bootstrapped" : "synced") ~/backup-manager from bundled resources")
+            bundledBackendChanged = !modifies.isEmpty
+            if modifies.isEmpty {
+                NSLog("FlaskSupervisor: ~/backup-manager déjà identique au backend embarqué — rien à synchroniser")
+            } else {
+                NSLog("FlaskSupervisor: \(firstInstall ? "bootstrapped" : "synced") ~/backup-manager from bundled resources — \(modifies.count) élément(s) mis à jour : \(modifies.joined(separator: ", "))")
+            }
         } catch {
+            // Une synchronisation interrompue en cours de route a pu changer
+            // une PARTIE des fichiers : on le signale quand même, sinon un
+            // backend vivant serait adopté alors qu'il mélange deux versions.
+            bundledBackendChanged = bundledBackendChanged || !modifies.isEmpty
             NSLog("FlaskSupervisor: \(firstInstall ? "bootstrap" : "sync") of ~/backup-manager failed: \(error)")
         }
     }
 
-    @discardableResult
-    private func runSync(_ launchPath: String, _ arguments: [String]) -> Int32 {
+    /// Exécute une commande et REND sa sortie, en la journalisant quand elle
+    /// échoue.
+    ///
+    /// Avant, stdout et stderr partaient tous les deux vers nullDevice et une
+    /// exception de lancement se réduisait à un -1 muet. Autrement dit, la
+    /// cause d'un échec de venv ou de pip n'était écrite NULLE PART : une
+    /// première installation hors ligne échouait en silence, l'utilisateur
+    /// voyait « Le serveur local n'a pas pu démarrer » sans le moindre indice
+    /// dans le journal, et rien ne permettait de distinguer « pas de réseau »
+    /// de « python3 absent » ou « disque plein ».
+    private func runCapturing(_ launchPath: String, _ arguments: [String],
+                              logFailure: Bool = true) -> (status: Int32, output: String) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: launchPath)
         p.arguments = arguments
-        p.standardOutput = FileHandle.nullDevice
-        p.standardError = FileHandle.nullDevice
+        let tube = Pipe()
+        p.standardOutput = tube
+        p.standardError = tube
         do {
             try p.run()
-            p.waitUntilExit()
-            return p.terminationStatus
         } catch {
-            return -1
+            if logFailure {
+                NSLog("FlaskSupervisor: impossible de lancer \(launchPath) : \(error)")
+            }
+            return (-1, "\(error)")
         }
+        // Lire JUSQU'À EOF AVANT waitUntilExit. Dans l'autre ordre, une sortie
+        // qui dépasse le tampon du tube (64 Ko — pip y arrive vite en cas
+        // d'erreur) bloque l'enfant qui écrit pendant qu'on attend qu'il se
+        // termine : interblocage franc, et l'app figée avec.
+        let sortie = String(data: tube.fileHandleForReading.readDataToEndOfFile(),
+                            encoding: .utf8) ?? ""
+        p.waitUntilExit()
+        let status = p.terminationStatus
+        if status != 0 && logFailure {
+            let extrait = sortie.trimmingCharacters(in: .whitespacesAndNewlines).suffix(600)
+            NSLog("FlaskSupervisor: échec de \(launchPath) \(arguments.joined(separator: " ")) (code \(status)) : \(extrait)")
+        }
+        return (status, sortie)
     }
 
+    @discardableResult
+    private func runSync(_ launchPath: String, _ arguments: [String]) -> Int32 {
+        runCapturing(launchPath, arguments).status
+    }
+
+    /// Sans journalisation : ici un code non nul est une RÉPONSE attendue
+    /// (« ce module n'est pas installé »), pas une panne à signaler.
     private func runSyncSucceeds(_ launchPath: String, _ arguments: [String]) -> Bool {
-        runSync(launchPath, arguments) == 0
+        runCapturing(launchPath, arguments, logFailure: false).status == 0
     }
 
     // MARK: - Launch (generation-gated, rate-limited)
@@ -396,13 +618,14 @@ final class FlaskSupervisor {
         }
 
         // Give app.py's own self-respawn (from /api/restart) a moment to take
-        // over the port before assuming this was a crash. app.py's dev server
-        // is single-threaded and can legitimately stall for several seconds
-        // (e.g. its /api/jobs handler shells out to /sbin/mount, which can
-        // block if a network volume is briefly unresponsive) — a single
-        // quick probe would misread that as "not alive" and trigger a
-        // needless duplicate launch, so this retries generously before
-        // concluding it's actually down.
+        // over the port before assuming this was a crash. Le backend peut
+        // légitimement rester muet plusieurs secondes — son gestionnaire
+        // /api/jobs shelle vers /sbin/mount, qui bloque si un volume réseau
+        // est brièvement injoignable. (Ce n'est plus une histoire de serveur
+        // de développement mono-thread : waitress sert avec 8 fils. Le délai
+        // vient du travail lui-même, pas du nombre de fils.) Une seule sonde
+        // rapide lirait ça comme « mort » et déclencherait un lancement
+        // dupliqué inutile, d'où ces réessais généreux avant de conclure.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             guard let self, gen == self.generation else { return }
             self.probeWithRetries(remaining: 5, delay: 2) { alive in
@@ -441,7 +664,34 @@ final class FlaskSupervisor {
                     if self.healthMissCount >= 3 {
                         self.healthTimer?.cancel()
                         self.healthTimer = nil
-                        if self.process == nil {
+                        if let fige = self.process {
+                            // Le process qu'on POSSÈDE est toujours vivant mais
+                            // ne répond plus : il est figé.
+                            //
+                            // Il n'y avait aucune branche pour ce cas. Le
+                            // minuteur venait d'être annulé juste au-dessus et
+                            // la relance était conditionnée à `process == nil` :
+                            // donc plus aucun minuteur, jamais d'état .crashed,
+                            // et « Relancer le serveur » restait masqué puisqu'il
+                            // n'apparaît qu'en .crashed. L'app affichait « en
+                            // marche » avec des données gelées, pour toujours.
+                            //
+                            // On le remplace. terminationHandler est débranché
+                            // AVANT : c'est nous qui décidons de la suite, pas
+                            // handleTermination, sinon deux chaînes de décision
+                            // relanceraient chacune la leur.
+                            NSLog("FlaskSupervisor: app.py est vivant mais ne répond plus depuis \(self.healthMissCount) sondages — on le remplace")
+                            self.process = nil
+                            fige.terminationHandler = nil
+                            self.consecutiveFailures += 1
+                            DispatchQueue.global(qos: .utility).async {
+                                Self.terminate(fige, raison: "backend figé")
+                                DispatchQueue.main.async {
+                                    guard gen == self.generation else { return }
+                                    self.attemptLaunch(generation: gen)
+                                }
+                            }
+                        } else {
                             self.attemptLaunch(generation: gen)
                         }
                     }
@@ -455,8 +705,8 @@ final class FlaskSupervisor {
     /// Rafraîchissement PONCTUEL, déclenché par un événement (branchement ou
     /// débranchement d'un disque), pas par un minuteur. Passe par le même
     /// fetchJobs partagé et ne crée aucun second minuteur : la règle « une
-    /// seule requête à la fois contre le serveur Flask mono-thread » reste
-    /// tenue, puisque ces événements sont rares et non périodiques.
+    /// seule source de scrutation » reste tenue, puisque ces événements sont
+    /// rares et non périodiques.
     func refreshJobsNow() {
         let gen = generation
         fetchJobs { [weak self] jobs in
@@ -467,11 +717,14 @@ final class FlaskSupervisor {
 
     // MARK: - Probe
     //
-    // A single shared entry point for all "is Flask up" checks (fetchJobs),
-    // so the app never runs more than one HTTP request against Flask's
-    // single-threaded dev server at a time. Do not add a second, independent
-    // polling timer elsewhere — route any additional periodic need through
-    // FlaskSupervisorDelegate.flaskJobsUpdated instead.
+    // Un seul point d'entrée partagé pour toutes les questions « le backend
+    // répond-il ? » (fetchJobs). La justification n'est plus la fragilité du
+    // serveur de développement mono-thread de Flask — app.py est servi par
+    // waitress avec 8 fils, il encaisse sans peine des requêtes parallèles —
+    // mais qu'un seul instantané partagé garde tous les consommateurs d'accord
+    // et évite d'empiler des requêtes redondantes. Ne pas ajouter de second
+    // minuteur de scrutation ailleurs : faire passer tout besoin périodique
+    // supplémentaire par FlaskSupervisorDelegate.flaskJobsUpdated.
 
     /// Sonde lente pendant l'état .crashed, jusqu'à ce que le serveur réponde.
     ///
