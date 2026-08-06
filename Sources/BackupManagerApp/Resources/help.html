@@ -90,6 +90,10 @@
   <a href="#problemes">13. En cas de problème</a>
   <a href="#desinstaller">14. Désinstaller complètement</a>
   <a href="#mobile">15. Accès depuis ton iPhone</a>
+  <a href="#macs">16. Plusieurs Macs, disques qui voyagent</a>
+  <a href="#ejection">17. Éjecter un disque &amp; Spotlight</a>
+  <a href="#relais">18. Le relais SSD ⇄ NAS</a>
+  <a href="#projets">19. Projets</a>
 </nav>
 
 <h2 id="principe">1. Principe général</h2>
@@ -369,6 +373,15 @@
 <p>&Agrave; tout instant, un c&ocirc;t&eacute; est celui sur lequel vous travaillez&nbsp;; l'autre est une copie. Vous rentrez&nbsp;: le SSD pousse vers le NAS, qui prend la main. Vous partez&nbsp;: le NAS repousse vers le SSD, qui la reprend. Ce passage est toujours explicite &mdash; l'application ne d&eacute;cide jamais du sens &agrave; votre place, elle vous le montre et vous le confirmez.</p>
 <p>Avant d'agir, elle affiche trois chiffres&nbsp;: ce qui arrive, ce qui change, et <strong>ce qui dispara&icirc;t</strong>. Les suppressions sont compt&eacute;es &agrave; part parce que ce sont les seules qui font mal, et elles atterrissent dans une corbeille dat&eacute;e du c&ocirc;t&eacute; receveur, r&eacute;cup&eacute;rables.</p>
 
+<h3>Mettre le NAS à jour sans changer de poste de travail</h3>
+<p>Passer la main et sauvegarder sont <strong>deux gestes différents</strong>, et la carte a un bouton pour chacun.</p>
+<ul>
+  <li><strong>« Mettre le NAS à jour »</strong> — la copie reçoit tout ce que vous avez fait. Vous continuez de travailler là où vous êtes, la main ne change pas de côté. C'est la sauvegarde du relais.</li>
+  <li><strong>« Passer la main au NAS… »</strong> — le NAS devient votre poste de travail, et <code>~/Montage/…</code> y pointe désormais. C'est un changement de machine, pas une sauvegarde. Les points de suspension annoncent le récapitulatif avant toute écriture.</li>
+</ul>
+<p>La mise à jour se fait aussi toute seule, dès que vous êtes chez vous avec le disque branché — dans le sens qui convient au moment présent. Le libellé du bouton suit d'ailleurs ce sens : il propose de mettre à jour le SSD quand c'est le NAS qui travaille.</p>
+<div class="warn"><strong>Une copie ne recouvre jamais l'original.</strong> Le côté qui n'a pas la main est en retard par construction ; l'envoyer sur le côté actif remplacerait le travail en cours par un état plus ancien. L'application refuse ce sens-là, toujours, et le dit.</div>
+
 <h3>Quand elle refuse, et pourquoi</h3>
 <p>Deux situations distinctes, toutes deux bloquantes&nbsp;:</p>
 <ul>
@@ -406,6 +419,38 @@
 <div class="tip">Cette distinction est volontaire. Un &eacute;cran vide laisserait croire que rien n'a jamais &eacute;t&eacute; synchronis&eacute;&nbsp;; un &eacute;tat affirm&eacute; sans r&eacute;serve pourrait &ecirc;tre faux. Le pointill&eacute; dit exactement ce qui est su, et &agrave; quel point.</div>
 
 <div class="tip">Le premier passage de main copie l'int&eacute;gralit&eacute; du dossier choisi et peut durer plusieurs heures pour un projet volumineux. &Agrave; lancer un soir. Les suivants ne transportent que les diff&eacute;rences.</div>
+
+<h2 id="projets">19. Projets</h2>
+
+<p>Un <strong>projet</strong> réunit un dossier de travail et ses copies. Trois rôles, dont deux facultatifs :</p>
+<ul>
+  <li><strong>Poste de travail</strong> — le disque sur lequel vous travaillez. Obligatoire.</li>
+  <li><strong>Sauvegarde</strong> — un second disque, qui ne travaille jamais. C'est un miroir classique.</li>
+  <li><strong>NAS</strong> — une copie, <em>et</em> un poste de travail possible. C'est un relais (section 18).</li>
+</ul>
+<p>Il faut au moins un compagnon : sans sauvegarde ni NAS, il n'y a qu'une seule copie, et appeler cela un projet protégé serait mentir.</p>
+
+<h3>Une seule carte</h3>
+<p>La carte du projet montre les copies d'un coup d'œil : laquelle fait autorité, laquelle est à jour, et depuis quand. Tous les réglages qui étaient répartis entre la carte de sauvegarde et celle du relais s'y retrouvent, groupés par ce sur quoi ils agissent — <em>Le NAS</em>, <em>La sauvegarde</em>.</p>
+<p>Le NAS n'est jamais interrogé pour dessiner cette carte : mesurer son retard réel demanderait un inventaire des deux côtés à chaque rafraîchissement. La tuile affiche donc la <strong>dernière mise à jour réussie</strong>, qui est un fait. Quand cette information manque, elle le dit — plutôt que d'annoncer un retard qu'elle n'a pas vérifié.</p>
+
+<h3>Ce qu'un projet refuse</h3>
+<p>Un projet n'exécute rien : il tient la sauvegarde et le relais ensemble et garantit qu'ils ne se contredisent pas. Tout ce qu'il apporte tient donc dans ses refus.</p>
+<ul>
+  <li><strong>Le dossier envoyé au NAS doit être couvert par la sauvegarde.</strong> Sinon le projet annoncerait trois copies alors que celle du NAS ne serait sauvegardée nulle part.</li>
+  <li><strong>Une sauvegarde ou un relais n'appartient qu'à un seul projet</strong>, sans quoi deux projets se contrediraient dès la première modification.</li>
+  <li><strong>Le disque de sauvegarde doit être différent du disque de travail</strong> : une copie sur le même disque disparaîtrait avec lui.</li>
+</ul>
+<p>Supprimer une sauvegarde ou un relais qui appartient à un projet est refusé, avec le nom du projet : dissociez-le d'abord.</p>
+
+<h3>Adopter ce qui existe déjà</h3>
+<p>Si vous avez déjà une sauvegarde et un relais qui décrivent le même dossier, un bandeau vous propose d'en faire un projet. Rien n'est recréé, rien n'est retransféré : l'application ne fait qu'envelopper ce qui tourne. Elle <strong>propose</strong> et n'impose pas — une configuration qui se réorganise seule au démarrage est une configuration dont on ne sait plus qui l'a décidée.</p>
+
+<h3>Créer un projet</h3>
+<p>« + Nouveau projet » demande un nom, le disque de travail et son dossier, puis les compagnons souhaités. L'aperçu annonce en direct ce que le projet donnera — y compris quand c'est une mauvaise nouvelle : deux copies au lieu de trois se lit mieux avant de valider qu'après.</p>
+<p>La sauvegarde et le relais sont créés en même temps que le projet, et les trois sont vérifiés <em>avant</em> qu'un seul fichier ne soit écrit : ils naissent ensemble ou pas du tout. La sauvegarde naît <strong>non planifiée</strong> — vous l'armez depuis la carte quand vous êtes prêt.</p>
+
+<div class="tip"><strong>Dissocier</strong> retire le regroupement, et lui seul. La sauvegarde et le relais continuent de fonctionner exactement comme avant et retrouvent leurs cartes séparées. Aucune donnée n'est touchée : ni le miroir, ni la copie du NAS.</div>
 
 <footer>Backup Manager — sauvegarde locale, sans cloud. Ce guide est embarqué dans l'app, disponible hors ligne.</footer>
 </div>
